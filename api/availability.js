@@ -1,10 +1,14 @@
 // /api/availability.js
 export const config = { runtime: 'nodejs' };
 
-const HOURS_RANGE = { start: 9, end: 22 }; // 9am–10pm (start of service window)
-const PREP_HOURS = 1;
-const CLEAN_HOURS = 1;
-const DAY_CAP = 2; // max 2 bars per day
+import {
+  HOURS_RANGE,
+  MAX_EVENTS_PER_DAY,
+  MAX_CONCURRENT_EVENTS,
+  blockWindow,
+  mapEvents,
+  countOverlaps
+} from './_calendarRules.js';
 
 function zonedStartISO(ymd, hour, tz) {
   // Build the exact local time in tz, then convert to a stable ISO.
@@ -78,17 +82,14 @@ export default async function handler(req, res) {
     // Ignore cancelled events
     const items = (rsp.data.items || []).filter(e => e.status !== 'cancelled');
 
-    // ✅ Daily capacity — max 2 bars per day
-    // If this calendar includes other personal events, filter by summary or extendedProperties here.
-    if (items.length >= DAY_CAP) {
+    // ✅ Daily capacity — max events per day
+    if (items.length >= MAX_EVENTS_PER_DAY) {
+      console.log('[availability] day at capacity', { date, events: items.length });
       return res.json({ slots: [] });
     }
 
     // Map to simple ranges for collision checks
-    const events = items.map(e => ({
-      start: new Date(e.start?.dateTime || e.start?.date),
-      end:   new Date(e.end?.dateTime   || e.end?.date)
-    }));
+    const events = mapEvents(items);
 
     const slots = [];
     for (let h = HOURS_RANGE.start; h <= HOURS_RANGE.end; h++) {
@@ -100,12 +101,15 @@ export default async function handler(req, res) {
       if (start < now) continue;
 
       // Full block = 1h prep + live service + 1h cleanup
-      const blockStart = new Date(start.getTime() - PREP_HOURS * 3600e3);
-      const blockEnd   = new Date(start.getTime() + (liveHours * 3600e3) + CLEAN_HOURS * 3600e3);
+      const { blockStart, blockEnd } = blockWindow(startIso, liveHours);
 
-      // Reject if any existing event overlaps the full block
-      const collides = events.some(ev => !(ev.end <= blockStart || ev.start >= blockEnd));
-      if (!collides) slots.push({ startISO: startIso });
+      const overlapCount = countOverlaps(events, blockStart, blockEnd);
+      if (overlapCount >= MAX_CONCURRENT_EVENTS) {
+        console.log('[availability] slot blocked (concurrent limit)', { date, hour: h, overlaps: overlapCount });
+        continue;
+      }
+
+      slots.push({ startISO: startIso });
     }
 
     return res.json({ slots });

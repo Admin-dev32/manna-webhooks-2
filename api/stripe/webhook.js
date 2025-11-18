@@ -3,13 +3,26 @@ export const config = { api: { bodyParser: false }, runtime: 'nodejs' };
 
 import Stripe from 'stripe';
 import { getCalendarClient } from '../_google.js'; // <- ruta correcta desde /api/stripe/
+import {
+  blockWindow,
+  mapEvents,
+  countOverlaps,
+  dayCapacityReached,
+  MAX_EVENTS_PER_DAY,
+  MAX_CONCURRENT_EVENTS
+} from '../_calendarRules.js';
+import { composeBookingEmail, sendBookingConfirmation } from '../_email.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
 
-// Reglas de agenda
-const PREP_HOURS = 1;
-const CLEAN_HOURS = 1;
-const DAY_CAP = 2; // máximo 2 reservas por día (en ese calendario)
+
+const BAR_TITLES = {
+  pancake: '🥞 Mini Pancake',
+  esquites: '🌽 Esquites',
+  maruchan: '🍜 Maruchan',
+  tostiloco: '🌶️ Tostiloco (Premium)',
+  snack: '🍭 Manna Snack Bar — “La Clásica”'
+};
 
 function pkgToHours(pkg) {
   if (pkg === '50-150-5h') return 2;
@@ -25,14 +38,12 @@ async function readRawBody(req) {
   return Buffer.concat(chunks);
 }
 
-function addHours(d, h) { return new Date(d.getTime() + h * 3600e3); }
-function blockWindow(startISO, liveHours) {
-  const start = new Date(startISO);
-  const blockStart = addHours(start, -PREP_HOURS);
-  const blockEnd   = addHours(start,  liveHours + CLEAN_HOURS);
-  return { blockStart, blockEnd };
+function pkgLabel(pkg) {
+  if (pkg === '50-150-5h') return '50–150 guests (2h live)';
+  if (pkg === '150-250-5h') return '150–250 guests (2.5h live)';
+  if (pkg === '250-350-6h') return '250–350 guests (3h live)';
+  return pkg || '';
 }
-function overlaps(aStart, aEnd, bStart, bEnd) { return !(aEnd <= bStart || aStart >= bEnd); }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
@@ -87,66 +98,138 @@ export default async function handler(req, res) {
 
     // Idempotencia: si ya existe este pedido, lo actualizamos
     const existing = items.find(e => e.extendedProperties?.private?.orderId === session.id);
+    const events = mapEvents(items);
 
-    // Capacidad: máximo 2 por día (sin contar el que vamos a actualizar)
-    const countToday = items.filter(e => e.id !== existing?.id).length;
-    if (!existing && countToday >= DAY_CAP) {
-      console.warn('[webhook] capacity full (2/day). Skipping insert.');
+    if (!existing && dayCapacityReached(events)) {
+      console.warn('[webhook] day capacity reached', { date: md.dateISO, limit: MAX_EVENTS_PER_DAY });
       return res.json({ received: true, capacity: 'full' });
     }
 
-    // Traslape: solo 1 bar al mismo tiempo (incluye prep+live+clean)
-    const isOverlap = items.some(e => {
-      const s = new Date(e.start?.dateTime || e.start?.date);
-      const en = new Date(e.end?.dateTime || e.end?.date);
-      return overlaps(blockStart, blockEnd, s, en) && e.id !== existing?.id;
-    });
-    if (!existing && isOverlap) {
-      console.warn('[webhook] overlap with another event. Skipping insert.');
+    const overlapCount = countOverlaps(events, blockStart, blockEnd, existing?.id);
+    if (!existing && overlapCount >= MAX_CONCURRENT_EVENTS) {
+      console.warn('[webhook] concurrent limit hit', { startISO, overlapCount });
       return res.json({ received: true, conflict: 'overlap' });
     }
 
-    // 5) Construir el evento (sin attendees para evitar error de delegación)
+    // 5) Construir el evento (ahora invitamos al cliente como attendee)
+    const existingPrivate = existing?.extendedProperties?.private || {};
+    const attendeeEmail = (md.email || existingPrivate.email || '').trim();
+    const secondEnabled = md.secondEnabled === true || md.secondEnabled === 'true';
+    const fountainEnabled = md.fountainEnabled === true || md.fountainEnabled === 'true';
+    const extrasNotes = [];
+    if (secondEnabled) extrasNotes.push(`Second bar: ${md.secondBar || ''} (${md.secondSize || ''})`);
+    if (fountainEnabled) extrasNotes.push(`Fountain: ${md.fountainSize || ''} (${md.fountainType || ''})`);
+
+    const privateProps = { ...existingPrivate, orderId: session.id };
+    const override = (key, value, fallback) => {
+      if (value === undefined || value === null) return;
+      const str = `${value}`.trim();
+      if (str) {
+        privateProps[key] = str;
+      } else if (fallback && !(key in privateProps)) {
+        privateProps[key] = fallback;
+      }
+    };
+
+    override('lang', md.lang, privateProps.lang || 'en');
+    override('email', attendeeEmail || md.email);
+    override('fullName', md.fullName || existingPrivate.fullName || '');
+    override('phone', md.phone || existingPrivate.phone || '');
+    override('mainBar', md.mainBar || existingPrivate.mainBar || '');
+    override('pkg', md.pkg || existingPrivate.pkg || '');
+    override('payMode', md.payMode || existingPrivate.payMode || '');
+    override('dateISO', md.dateISO || existingPrivate.dateISO || '');
+    override('startISO', md.startISO || existingPrivate.startISO || '');
+    override('venue', md.venue || existingPrivate.venue || '');
+    override('secondEnabled', secondEnabled ? 'true' : 'false');
+    override('secondBar', md.secondBar || existingPrivate.secondBar || '');
+    override('secondSize', md.secondSize || existingPrivate.secondSize || '');
+    override('fountainEnabled', fountainEnabled ? 'true' : 'false');
+    override('fountainSize', md.fountainSize || existingPrivate.fountainSize || '');
+    override('fountainType', md.fountainType || existingPrivate.fountainType || '');
+    override('total', md.total || existingPrivate.total || '');
+    override('dueNow', md.dueNow || existingPrivate.dueNow || '');
+    privateProps.timezone = privateProps.timezone || tz;
+
+    const mainBarTitle = BAR_TITLES[privateProps.mainBar] || privateProps.mainBar || 'Booking';
     const requestBody = {
-      summary: `Manna Snack Bars — ${md.mainBar || 'Booking'} (${md.pkg || ''})`,
+      summary: `Manna Snack Bars — ${mainBarTitle} (${pkgLabel(md.pkg)})`,
       description: [
         `Name: ${md.fullName || ''}`,
-        md.email ? `Email: ${md.email}` : '',
+        attendeeEmail ? `Email: ${attendeeEmail}` : '',
         md.phone ? `Phone: ${md.phone}` : '',
-        `Package: ${md.pkg || ''}`,
-        `Bar: ${md.mainBar || ''}`,
+        `Package: ${pkgLabel(md.pkg)}`,
+        `Bar: ${mainBarTitle}`,
         `Date: ${md.dateISO || ''}`,
         `Start: ${startISO}`,
+        extrasNotes.join(' | '),
         `Service hours: ${liveHrs}`,
         `Stripe session: ${session.id}`
       ].filter(Boolean).join('\n'),
       location: md.venue || '',
       start: { dateTime: blockStart.toISOString(), timeZone: tz },
       end:   { dateTime: blockEnd.toISOString(),   timeZone: tz },
-      // IMPORTANTE: no invitamos asistentes (Service Account sin DWD)
-      // attendees: md.email ? [{ email: md.email, displayName: md.fullName || '' }] : [],
-      extendedProperties: { private: { orderId: session.id } },
+      extendedProperties: { private: privateProps },
       guestsCanInviteOthers: false,
       guestsCanModify: false,
       guestsCanSeeOtherGuests: false
     };
 
-    if (existing) {
-      await calendar.events.patch({
-        calendarId: calId,
-        eventId: existing.id,
-        requestBody,
-        sendUpdates: 'none' // no envía invitaciones
-      });
-      return res.json({ received: true, updated: true });
-    } else {
+    if (attendeeEmail) {
+      requestBody.attendees = [{ email: attendeeEmail, displayName: md.fullName || '' }];
+    }
+
+    async function pushEvent(body){
+      const sendUpdates = body.attendees?.length ? 'all' : 'none';
+      if (existing) {
+        await calendar.events.patch({
+          calendarId: calId,
+          eventId: existing.id,
+          requestBody: body,
+          sendUpdates
+        });
+        return { updated: true };
+      }
       await calendar.events.insert({
         calendarId: calId,
-        requestBody,
-        sendUpdates: 'none' // no envía invitaciones
+        requestBody: body,
+        sendUpdates
       });
-      return res.json({ received: true, created: true });
+      return { created: true };
     }
+
+    let result;
+    try {
+      result = await pushEvent(requestBody);
+    } catch (err) {
+      if (requestBody.attendees) {
+        console.warn('[webhook] attendee insert failed, retrying without attendees', err.message);
+        delete requestBody.attendees;
+        const fallback = await pushEvent(requestBody);
+        result = { ...fallback, attendeesFallback: true };
+      } else {
+        throw err;
+      }
+    }
+
+    if (attendeeEmail) {
+      try {
+        const copy = composeBookingEmail({
+          lang: (privateProps.lang || 'en'),
+          type: 'confirmation',
+          data: { ...privateProps }
+        });
+        const bcc = process.env.BOOKING_INTERNAL_NOTIFY_EMAIL || undefined;
+        const sent = await sendBookingConfirmation({ to: attendeeEmail, subject: copy.subject, html: copy.html, text: copy.text, bcc });
+        if (sent) console.log('[webhook] confirmation email sent', { sessionId: session.id, to: attendeeEmail });
+        else console.warn('[webhook] confirmation email skipped (SMTP missing)');
+      } catch (emailErr) {
+        console.error('[webhook] email send failed', emailErr.message);
+      }
+    }
+
+    console.log('[webhook] calendar event saved', { sessionId: session.id, action: existing ? 'updated' : 'created', start: blockStart.toISOString() });
+    return res.json({ received: true, ...result });
   } catch (err) {
     console.error('[webhook] handler error:', err);
     return res.status(500).json({ error: 'server_error', detail: err.message });
