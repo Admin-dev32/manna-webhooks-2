@@ -87,6 +87,11 @@ export default async function handler(req, res){
     }
 
     const { total, dueNow } = computeTotals(pb);
+    const paymentMethodTypes = ['card'];
+    if (total >= 600) {
+      // Totals ≥ $600 unlock BNPL/financing (Affirm) on Stripe Checkout
+      paymentMethodTypes.push('affirm');
+    }
 
     // Nombre que verá el cliente en Checkout
     const barTitle = (BAR_META[pb.mainBar]?.title) || 'Snack Bar';
@@ -101,8 +106,8 @@ export default async function handler(req, res){
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      allow_promotion_codes: false,
-      payment_method_types: ['card'],
+      allow_promotion_codes: true,
+      payment_method_types: paymentMethodTypes,
       line_items: [{
         price_data: {
           currency: 'usd',

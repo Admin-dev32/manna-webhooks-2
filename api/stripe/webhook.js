@@ -106,7 +106,8 @@ export default async function handler(req, res) {
       return res.json({ received: true, conflict: 'overlap' });
     }
 
-    // 5) Construir el evento (sin attendees para evitar error de delegación)
+    // 5) Construir el evento (ahora invitamos al cliente como attendee)
+    const attendeeEmail = (md.email || '').trim();
     const requestBody = {
       summary: `Manna Snack Bars — ${md.mainBar || 'Booking'} (${md.pkg || ''})`,
       description: [
@@ -123,29 +124,46 @@ export default async function handler(req, res) {
       location: md.venue || '',
       start: { dateTime: blockStart.toISOString(), timeZone: tz },
       end:   { dateTime: blockEnd.toISOString(),   timeZone: tz },
-      // IMPORTANTE: no invitamos asistentes (Service Account sin DWD)
-      // attendees: md.email ? [{ email: md.email, displayName: md.fullName || '' }] : [],
       extendedProperties: { private: { orderId: session.id } },
       guestsCanInviteOthers: false,
       guestsCanModify: false,
       guestsCanSeeOtherGuests: false
     };
 
-    if (existing) {
-      await calendar.events.patch({
-        calendarId: calId,
-        eventId: existing.id,
-        requestBody,
-        sendUpdates: 'none' // no envía invitaciones
-      });
-      return res.json({ received: true, updated: true });
-    } else {
+    if (attendeeEmail) {
+      requestBody.attendees = [{ email: attendeeEmail, displayName: md.fullName || '' }];
+    }
+
+    async function pushEvent(body){
+      const sendUpdates = body.attendees?.length ? 'all' : 'none';
+      if (existing) {
+        await calendar.events.patch({
+          calendarId: calId,
+          eventId: existing.id,
+          requestBody: body,
+          sendUpdates
+        });
+        return { updated: true };
+      }
       await calendar.events.insert({
         calendarId: calId,
-        requestBody,
-        sendUpdates: 'none' // no envía invitaciones
+        requestBody: body,
+        sendUpdates
       });
-      return res.json({ received: true, created: true });
+      return { created: true };
+    }
+
+    try {
+      const result = await pushEvent(requestBody);
+      return res.json({ received: true, ...result });
+    } catch (err) {
+      if (requestBody.attendees) {
+        console.warn('[webhook] attendee insert failed, retrying without attendees', err.message);
+        delete requestBody.attendees;
+        const fallback = await pushEvent(requestBody);
+        return res.json({ received: true, ...fallback, attendeesFallback: true });
+      }
+      throw err;
     }
   } catch (err) {
     console.error('[webhook] handler error:', err);
