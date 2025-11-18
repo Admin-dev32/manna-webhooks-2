@@ -1,4 +1,6 @@
 // Shared calendar scheduling helpers + rules
+import { getLocalDateKey } from './_dates.js';
+
 export const PREP_HOURS = 1;
 export const CLEAN_HOURS = 1;
 export const HOURS_RANGE = { start: 9, end: 22 }; // inclusive hours in local tz
@@ -32,7 +34,22 @@ export function countOverlaps(events, blockStart, blockEnd, ignoreId) {
   return events.filter(ev => (ignoreId ? ev.id !== ignoreId : true) && overlaps(blockStart, blockEnd, ev.start, ev.end)).length;
 }
 
-export function dayCapacityReached(events, ignoreId) {
-  const active = ignoreId ? events.filter(ev => ev.id !== ignoreId) : events;
-  return active.length >= MAX_EVENTS_PER_DAY;
+function countEventsOnDate(events, dateKey, tz, ignoreId) {
+  return events.filter(ev => {
+    if (ignoreId && ev.id === ignoreId) return false;
+    return getLocalDateKey(ev.start, tz) === dateKey;
+  }).length;
+}
+
+export function slotCapacityState({ events, blockStart, blockEnd, tz, ignoreId }) {
+  const dateKey = getLocalDateKey(blockStart, tz);
+  const dayCount = countEventsOnDate(events, dateKey, tz, ignoreId);
+  const overlapCount = countOverlaps(events, blockStart, blockEnd, ignoreId);
+  const dayFull = dayCount >= MAX_EVENTS_PER_DAY;
+  const concurrentFull = overlapCount >= MAX_CONCURRENT_EVENTS;
+  return { dateKey, dayCount, overlapCount, dayFull, concurrentFull };
+}
+
+export function dayCapacityReached(events, dateKey, tz, ignoreId) {
+  return countEventsOnDate(events, dateKey, tz, ignoreId) >= MAX_EVENTS_PER_DAY;
 }

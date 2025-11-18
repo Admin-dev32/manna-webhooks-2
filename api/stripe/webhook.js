@@ -6,11 +6,11 @@ import { getCalendarClient } from '../_google.js'; // <- ruta correcta desde /ap
 import {
   blockWindow,
   mapEvents,
-  countOverlaps,
+  slotCapacityState,
   dayCapacityReached,
-  MAX_EVENTS_PER_DAY,
-  MAX_CONCURRENT_EVENTS
+  MAX_EVENTS_PER_DAY
 } from '../_calendarRules.js';
+import { getDayBoundsForISO } from '../_dates.js';
 import { composeBookingEmail, sendBookingConfirmation } from '../_email.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
@@ -82,14 +82,12 @@ export default async function handler(req, res) {
     const { blockStart, blockEnd } = blockWindow(startISO, liveHrs);
 
     // 4) Cargar eventos del MISMO día (para capacidad y traslape)
-    const day = new Date(startISO);
-    const dayStart = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 0,0,0));
-    const dayEnd   = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 23,59,59));
+    const { timeMin, timeMax, dayKey } = getDayBoundsForISO(startISO, tz);
 
     const list = await calendar.events.list({
       calendarId: calId,
-      timeMin: dayStart.toISOString(),
-      timeMax: dayEnd.toISOString(),
+      timeMin,
+      timeMax,
       singleEvents: true,
       orderBy: 'startTime',
       maxResults: 100
@@ -100,14 +98,14 @@ export default async function handler(req, res) {
     const existing = items.find(e => e.extendedProperties?.private?.orderId === session.id);
     const events = mapEvents(items);
 
-    if (!existing && dayCapacityReached(events)) {
-      console.warn('[webhook] day capacity reached', { date: md.dateISO, limit: MAX_EVENTS_PER_DAY });
+    if (!existing && dayCapacityReached(events, dayKey, tz)) {
+      console.warn('[webhook] day capacity reached', { date: dayKey, limit: MAX_EVENTS_PER_DAY, tz });
       return res.json({ received: true, capacity: 'full' });
     }
 
-    const overlapCount = countOverlaps(events, blockStart, blockEnd, existing?.id);
-    if (!existing && overlapCount >= MAX_CONCURRENT_EVENTS) {
-      console.warn('[webhook] concurrent limit hit', { startISO, overlapCount });
+    const state = slotCapacityState({ events, blockStart, blockEnd, tz, ignoreId: existing?.id });
+    if (!existing && state.concurrentFull) {
+      console.warn('[webhook] concurrent limit hit', { startISO, overlapCount: state.overlapCount, tz });
       return res.json({ received: true, conflict: 'overlap' });
     }
 

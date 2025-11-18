@@ -43,24 +43,37 @@ const PKG_LABELS = {
   }
 };
 
+const SUPPORT_EMAIL = 'team@mannasnackbars.com';
+const SUPPORT_PHONE = '661-403-0004';
+const SUPPORT_PHONE_TEL = '+16614030004';
+
 const EMAIL_COPY = {
   en: {
     confirmationSubject: '🎉 Your Manna Snack Bars booking is confirmed',
-    reminderSubject: '⏰ Reminder: Manna Snack Bars arrives tomorrow',
+    reminderSubject: '⏰ Friendly reminder: your snack bar is tomorrow',
     greeting: 'Hi {name}! 🙌',
-    friendName: 'there',
-    introConfirmation: 'Thanks for booking Manna Snack Bars. Here are your sweet details:',
-    introReminder: 'We\'re packing the goodies! Here\'s a quick refresher for tomorrow:',
-    reminderPrep: 'Our crew arrives about 1 hour early for setup.',
-    outroConfirmation: 'Need to make a change? Just reply to this email.',
-    outroReminder: 'Reply to this email if anything changes—see you soon! 😊',
+    friendName: 'friend',
+    introConfirmation: 'Thank you for inviting our snack squad. Here’s the delicious plan we just locked in:',
+    introReminder: 'We’re packing the goodies! Here’s a quick refresher for tomorrow’s celebration:',
+    reminderPrep: 'Our team arrives about 1 hour early for setup—please reserve space & power for us.',
+    outroConfirmation: 'We can’t wait to celebrate with you!',
+    outroReminder: 'Get ready for a sweet time—we’ll see you soon!',
+    tagline: 'Mobile snack bars for Bakersfield & Kern County events.',
+    supportTitle: 'Need to make a change or have questions?',
+    supportEmailLabel: 'Email',
+    supportPhoneLabel: 'Call / Text',
+    sections: {
+      reservation: 'Reservation details',
+      extras: 'Extras & upgrades',
+      payment: 'Payment summary'
+    },
     labels: {
       bar: 'Main bar',
       pkg: 'Package',
       date: 'Date & time',
       timezone: 'Timezone',
       location: 'Location',
-      payment: 'Payment',
+      payment: 'Payment mode',
       extras: 'Extras',
       secondBar: 'Second bar: {value}',
       fountain: 'Chocolate fountain: {value}',
@@ -71,28 +84,35 @@ const EMAIL_COPY = {
       payModeFull: 'Paying in full (save $20)',
       payModeDeposit: '25% deposit',
       contact: 'Contact',
-      phone: 'Phone',
-      reminderPrep: 'We arrive ~1h early for setup.'
-    },
-    footer: 'Manna Snack Bars — booking team'
+      phone: 'Phone'
+    }
   },
   es: {
     confirmationSubject: '🎉 Tu reservación de Manna Snack Bars está confirmada',
-    reminderSubject: '⏰ Recordatorio: tu barra Manna llega mañana',
+    reminderSubject: '⏰ Recordatorio amigable: tu barra es mañana',
     greeting: '¡Hola {name}! 🙌',
     friendName: 'amig@',
-    introConfirmation: 'Gracias por reservar con Manna Snack Bars. Aquí están tus detalles:',
-    introReminder: '¡Ya vamos en camino! Te recordamos los datos de tu evento para mañana:',
-    reminderPrep: 'Nuestro equipo llega aprox. 1 hora antes para montar.',
-    outroConfirmation: '¿Necesitas hacer un cambio? Responde este correo y te ayudamos.',
-    outroReminder: 'Si algo cambia, solo responde este correo. ¡Nos vemos pronto! 😊',
+    introConfirmation: 'Gracias por invitar a nuestro equipo dulce. Estos son los detalles que acabamos de asegurar:',
+    introReminder: '¡Ya vamos en camino! Te recordamos la información para mañana:',
+    reminderPrep: 'Llegamos aprox. 1 hora antes para montar—ayúdanos con espacio y electricidad.',
+    outroConfirmation: '¡Nos emociona celebrar contigo!',
+    outroReminder: 'Prepárate para un momento delicioso, ¡nos vemos muy pronto!',
+    tagline: 'Barras móviles para eventos en Bakersfield y todo Kern County.',
+    supportTitle: '¿Necesitas hacer un cambio o tienes dudas?',
+    supportEmailLabel: 'Email',
+    supportPhoneLabel: 'Llamadas / Mensajes',
+    sections: {
+      reservation: 'Detalles de tu evento',
+      extras: 'Extras y upgrades',
+      payment: 'Resumen de pago'
+    },
     labels: {
       bar: 'Barra principal',
       pkg: 'Paquete',
       date: 'Fecha y hora',
       timezone: 'Zona horaria',
       location: 'Ubicación',
-      payment: 'Pago',
+      payment: 'Modo de pago',
       extras: 'Extras',
       secondBar: 'Segunda barra: {value}',
       fountain: 'Fuente de chocolate: {value}',
@@ -103,10 +123,8 @@ const EMAIL_COPY = {
       payModeFull: 'Pago total (ahorra $20)',
       payModeDeposit: 'Anticipo del 25%',
       contact: 'Contacto',
-      phone: 'Teléfono',
-      reminderPrep: 'Llegamos ~1h antes para el montaje.'
-    },
-    footer: 'Manna Snack Bars — equipo de reservaciones'
+      phone: 'Teléfono'
+    }
   }
 };
 
@@ -162,29 +180,70 @@ export function composeBookingEmail({ lang = 'en', type = 'confirmation', data =
 
   const intro = type === 'reminder' ? copy.introReminder : copy.introConfirmation;
   const outro = type === 'reminder' ? copy.outroReminder : copy.outroConfirmation;
-  const prepLine = type === 'reminder' ? `<p>${copy.reminderPrep}</p>` : '';
+  const prepLine = type === 'reminder' ? `<div style="margin:0 0 18px;padding:14px 16px;border-radius:16px;background:rgba(249,168,212,.2);color:#7a2e81;font-weight:600;">${copy.reminderPrep}</div>` : '';
 
-  const detailsHtml = [
+  const reservationRows = [
     { label: copy.labels.bar, value: barTitle },
     { label: copy.labels.pkg, value: pkgLabel },
     { label: copy.labels.date, value: when },
     { label: copy.labels.timezone, value: timezone },
     { label: copy.labels.location, value: data.venue || '—' },
-    { label: copy.labels.payment, value: `${payModeLabel}<br>${copy.labels.total}: ${total}<br>${copy.labels.dueToday}: ${dueNow}<br>${copy.labels.remaining}: ${remaining}` },
-    { label: copy.labels.extras, value: extras.length ? extras.join('<br>') : copy.labels.noExtras },
-    { label: copy.labels.contact, value: `${data.fullName || '—'}<br>${data.email || ''}<br>${copy.labels.phone}: ${data.phone || '—'}` }
-  ].map(row => `<div style="margin-bottom:12px;"><strong>${row.label}:</strong><div style="margin-top:4px;color:#0f172a;">${row.value || '—'}</div></div>`).join('');
+    { label: copy.labels.contact, value: `${data.fullName || '—'} · ${data.email || '—'} · ${copy.labels.phone}: ${data.phone || '—'}` }
+  ];
+
+  const extrasValue = extras.length ? extras.join('<br>') : copy.labels.noExtras;
+  const paymentRows = [
+    { label: copy.labels.payment, value: payModeLabel },
+    { label: copy.labels.total, value: total },
+    { label: copy.labels.dueToday, value: dueNow },
+    { label: copy.labels.remaining, value: remaining }
+  ];
+
+  const sections = [
+    { title: copy.sections.reservation, rows: reservationRows },
+    { title: copy.sections.extras, rows: [{ label: copy.labels.extras, value: extrasValue }] },
+    { title: copy.sections.payment, rows: paymentRows }
+  ];
+
+  const detailCards = sections.map(section => {
+    const rows = section.rows.map(row => `
+        <tr>
+          <td style="padding:4px 0;color:#7c8296;font-size:13px;width:45%;vertical-align:top;">${row.label}</td>
+          <td style="padding:4px 0;color:#0f172a;font-weight:600;font-size:14px;vertical-align:top;">${row.value || '—'}</td>
+        </tr>
+      `).join('');
+    return `
+      <div style="margin:0 0 18px;background:#fff7ff;border:1px solid rgba(192,132,252,.3);border-radius:18px;padding:16px;">
+        <div style="font-weight:700;font-size:15px;color:#7a2e81;padding-bottom:8px;">${section.title}</div>
+        <table role="presentation" width="100%" style="border-collapse:collapse;">${rows}</table>
+      </div>
+    `;
+  }).join('');
 
   const html = `
-    <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;background:#f4f6fb;padding:24px;">
-      <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;padding:28px;color:#0f172a;">
-        <h2 style="margin:0 0 8px;">${greeting}</h2>
-        <p style="margin:0 0 16px;">${intro}</p>
-        ${prepLine}
-        ${detailsHtml}
-        <p style="margin:16px 0 0;">${outro}</p>
-        <p style="margin:8px 0 0;font-size:13px;color:#475467;">${copy.footer}</p>
-      </div>
+    <div style="font-family:'Plus Jakarta Sans','Segoe UI',Arial,sans-serif;background:#fdf7ff;padding:28px 12px;">
+      <table role="presentation" width="100%" style="max-width:620px;margin:0 auto;border-collapse:collapse;">
+        <tr>
+          <td>
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:24px;font-weight:800;color:#7a2e81;">Manna Snack Bars</div>
+              <div style="color:#7c8296;font-weight:600;">${copy.tagline}</div>
+            </div>
+            <div style="background:#ffffff;border-radius:28px;padding:28px;box-shadow:0 25px 50px rgba(122,46,129,.12);color:#0f172a;">
+              <p style="margin:0 0 12px;font-size:18px;font-weight:700;">${greeting}</p>
+              <p style="margin:0 0 16px;">${intro}</p>
+              ${prepLine}
+              ${detailCards}
+              <p style="margin:12px 0 0;">${outro}</p>
+            </div>
+            <div style="text-align:center;margin-top:20px;font-size:14px;color:#7c8296;">
+              <strong>${copy.supportTitle}</strong><br>
+              ${copy.supportEmailLabel}: <a href="mailto:${SUPPORT_EMAIL}" style="color:#7a2e81;text-decoration:none;">${SUPPORT_EMAIL}</a><br>
+              ${copy.supportPhoneLabel}: <a href="tel:${SUPPORT_PHONE_TEL}" style="color:#7a2e81;text-decoration:none;">${SUPPORT_PHONE}</a>
+            </div>
+          </td>
+        </tr>
+      </table>
     </div>
   `;
 
@@ -195,20 +254,25 @@ export function composeBookingEmail({ lang = 'en', type = 'confirmation', data =
     intro,
     type === 'reminder' ? copy.reminderPrep : '',
     '',
+    `${copy.sections.reservation}:`,
     `${copy.labels.bar}: ${barTitle}`,
     `${copy.labels.pkg}: ${pkgLabel}`,
     `${copy.labels.date}: ${when}`,
     `${copy.labels.timezone}: ${timezone}`,
     `${copy.labels.location}: ${data.venue || '—'}`,
+    `${copy.labels.contact}: ${data.fullName || '—'} / ${data.email || '—'} / ${copy.labels.phone}: ${data.phone || '—'}`,
+    '',
+    `${copy.sections.extras}: ${extrasText}`,
+    '',
+    `${copy.sections.payment}:`,
     `${copy.labels.payment}: ${payModeLabel}`,
     `${copy.labels.total}: ${total}`,
     `${copy.labels.dueToday}: ${dueNow}`,
     `${copy.labels.remaining}: ${remaining}`,
-    `${copy.labels.extras}: ${extrasText}`,
-    `${copy.labels.contact}: ${data.fullName || '—'} / ${data.email || ''} / ${copy.labels.phone}: ${data.phone || '—'}`,
     '',
     outro,
-    copy.footer
+    `${copy.supportEmailLabel}: ${SUPPORT_EMAIL}`,
+    `${copy.supportPhoneLabel}: ${SUPPORT_PHONE}`
   ].filter(Boolean).join('\n');
 
   return { subject, html, text: lines };
@@ -221,7 +285,8 @@ async function sendMail({ to, subject, html, text, bcc }) {
     console.warn('[email] no recipient supplied');
     return false;
   }
-  const from = process.env.BOOKING_FROM_EMAIL || process.env.SMTP_USER;
+  const fromAddress = process.env.BOOKING_FROM_EMAIL || process.env.SMTP_USER;
+  const from = fromAddress ? `Manna Snack Bars – Booking Team <${fromAddress}>` : undefined;
   const payload = {
     from,
     to,
