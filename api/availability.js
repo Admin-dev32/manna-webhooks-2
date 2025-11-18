@@ -1,20 +1,15 @@
 // /api/availability.js
 export const config = { runtime: 'nodejs' };
 
-const HOURS_RANGE = { start: 9, end: 22 }; // 9am–10pm (start of service window)
-const PREP_HOURS = 1;
-const CLEAN_HOURS = 1;
-const DAY_CAP = 2; // max 2 bars per day
-
-function zonedStartISO(ymd, hour, tz) {
-  // Build the exact local time in tz, then convert to a stable ISO.
-  const [y, m, d] = ymd.split('-').map(Number);
-  const guess = Date.UTC(y, m - 1, d, hour, 0, 0);
-  const asDate = new Date(guess);
-  const inTz = new Date(asDate.toLocaleString('en-US', { timeZone: tz }));
-  const offsetMs = inTz.getTime() - asDate.getTime();
-  return new Date(guess - offsetMs).toISOString();
-}
+import {
+  HOURS_RANGE,
+  mapEvents,
+  dayCapacityReached,
+  evaluateSlotAllowance,
+  MAX_EVENTS_PER_DAY
+} from './_calendarRules.js';
+import { zonedStartISO, getDayBoundsForISO, getLocalDateKey } from './_dates.js';
+import { rememberDaySnapshot } from './_capacityStore.js';
 
 export default async function handler(req, res) {
   // CORS
@@ -63,8 +58,7 @@ export default async function handler(req, res) {
     const calendar = google.calendar({ version: 'v3', auth: jwt });
 
     // Load all events for the date to compute overlaps
-    const dayStart = zonedStartISO(date, 0, tz);
-    const dayEnd   = zonedStartISO(date, 23, tz);
+    const { timeMin: dayStart, timeMax: dayEnd, dayKey: requestDayKey } = getDayBoundsForISO(date, tz);
 
     const rsp = await calendar.events.list({
       calendarId: calId,
@@ -78,17 +72,21 @@ export default async function handler(req, res) {
     // Ignore cancelled events
     const items = (rsp.data.items || []).filter(e => e.status !== 'cancelled');
 
-    // ✅ Daily capacity — max 2 bars per day
-    // If this calendar includes other personal events, filter by summary or extendedProperties here.
-    if (items.length >= DAY_CAP) {
+    const events = mapEvents(items);
+    events.forEach(ev => {
+      const dateKey = getLocalDateKey(ev.start, tz);
+      console.log('[availability] event date mapping', { start: ev.start.toISOString(), dateKey, tz });
+    });
+
+    const dayKey = requestDayKey || getLocalDateKey(date, tz) || date;
+    const eventsOnDay = events.filter(ev => getLocalDateKey(ev.start, tz) === dayKey).length;
+    rememberDaySnapshot({ dateKey: dayKey, count: eventsOnDay, limit: MAX_EVENTS_PER_DAY, tz, source: 'availability' });
+
+    // ✅ Daily capacity — max events per local day using shared helper
+    if (dayCapacityReached(events, dayKey, tz)) {
+      console.log('[availability] day at capacity', { date: dayKey, count: eventsOnDay, limit: MAX_EVENTS_PER_DAY, tz });
       return res.json({ slots: [] });
     }
-
-    // Map to simple ranges for collision checks
-    const events = items.map(e => ({
-      start: new Date(e.start?.dateTime || e.start?.date),
-      end:   new Date(e.end?.dateTime   || e.end?.date)
-    }));
 
     const slots = [];
     for (let h = HOURS_RANGE.start; h <= HOURS_RANGE.end; h++) {
@@ -99,13 +97,28 @@ export default async function handler(req, res) {
       const now = new Date();
       if (start < now) continue;
 
-      // Full block = 1h prep + live service + 1h cleanup
-      const blockStart = new Date(start.getTime() - PREP_HOURS * 3600e3);
-      const blockEnd   = new Date(start.getTime() + (liveHours * 3600e3) + CLEAN_HOURS * 3600e3);
+      const state = evaluateSlotAllowance({ events, startISO: startIso, liveHours, tz });
+      if (state.dayFull) {
+        console.log('[availability] slot skipped (day at capacity)', {
+          date: state.dateKey,
+          hour: h,
+          tz,
+          count: state.dayCount,
+          limit: MAX_EVENTS_PER_DAY
+        });
+        break;
+      }
+      if (state.concurrentFull) {
+        console.log('[availability] slot skipped (concurrent)', {
+          date: state.dateKey,
+          hour: h,
+          overlaps: state.overlapCount,
+          tz
+        });
+        continue;
+      }
 
-      // Reject if any existing event overlaps the full block
-      const collides = events.some(ev => !(ev.end <= blockStart || ev.start >= blockEnd));
-      if (!collides) slots.push({ startISO: startIso });
+      slots.push({ startISO: startIso });
     }
 
     return res.json({ slots });
