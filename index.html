@@ -3,10 +3,25 @@
   <script>
     window.MANNA_API_BASE = "https://manna-webhooks-2.vercel.app"; /* 👈 change if needed */
   </script>
+  <script>
+    (function loadMannaFonts() {
+      try {
+        const existing = document.getElementById('manna-font-css');
+        if (existing) return;
+        const link = document.createElement('link');
+        link.id = 'manna-font-css';
+        link.rel = 'stylesheet';
+        link.href =
+          'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap';
+        document.head.appendChild(link);
+      } catch (err) {
+        console.warn('[manna] font loader failed', err);
+      }
+    })();
+  </script>
 
   
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+  <style type="text/css">
 
     #manna-booking-steps {
       --bg: linear-gradient(180deg,#fffafd,#f8fbff);
