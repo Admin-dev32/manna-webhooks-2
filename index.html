@@ -995,7 +995,7 @@
                 <div class="input">
                   <input type="text" id="manna-event-address" data-venue data-i18n-placeholder="placeholder_venue" placeholder="Venue name, city, address">
                 </div>
-                <div class="manna-address-footer"><small>Powered by Google Maps</small></div>
+                <div class="manna-address-footer"><small data-i18n="address_hint">Please write your event address clearly (venue name + city + address).</small></div>
               </div>
               <div class="field">
                 <label data-i18n="label_setup">Setup surface</label>
@@ -1203,6 +1203,7 @@
           placeholder_email: 'name@email.com',
           placeholder_phone: '(555) 123-4567',
           placeholder_venue: 'Venue name, city, address',
+          address_hint: 'Please write your event address clearly (venue name + city + address).',
           setup_indoors: 'Indoors',
           setup_outdoors: 'Outdoors',
           power_access: 'We have power access',
@@ -1326,6 +1327,7 @@
           placeholder_email: 'nombre@correo.com',
           placeholder_phone: '(55) 1234 5678',
           placeholder_venue: 'Nombre del venue, ciudad, dirección',
+          address_hint: 'Escribe claramente la dirección del evento (salón, ciudad y dirección).',
           setup_indoors: 'Interior',
           setup_outdoors: 'Exterior',
           power_access: 'Tenemos acceso a energía',
@@ -1763,30 +1765,6 @@
       updateRunningTotal();
       applyTranslations();
     })();
-  </script>
-  <script>
-    window.initMannaAddressAutocomplete = function initMannaAddressAutocomplete() {
-      try {
-        const input = document.getElementById('manna-event-address');
-        if (!input) return;
-        if (input.dataset.autocompleteReady === '1') return;
-        if (!window.google || !google.maps || !google.maps.places) {
-          console.warn('[manna] Google Maps library not ready');
-          return;
-        }
-        const autocomplete = new google.maps.places.Autocomplete(input, { types: ['geocode'] });
-        input.dataset.autocompleteReady = '1';
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          if (place && place.formatted_address) {
-            input.value = place.formatted_address;
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-        });
-      } catch (err) {
-        console.error('[manna] address autocomplete init failed', err);
-      }
-    };
   </script>
   <!-- Replace YOUR_GOOGLE_MAPS_API_KEY with a valid Maps JavaScript API key -->
   <script

@@ -79,7 +79,7 @@ export default async function handler(req, res) {
       return res.json({ received: true, skipped: true });
     }
     // 4) Cargar eventos del MISMO día (para capacidad y traslape)
-    const { timeMin, timeMax, dayKey } = getDayBoundsForISO(startISO, tz);
+    const { timeMin, timeMax } = getDayBoundsForISO(startISO, tz);
 
     const list = await calendar.events.list({
       calendarId: calId,
@@ -96,15 +96,15 @@ export default async function handler(req, res) {
     const events = mapEvents(items);
 
     const slotState = evaluateSlotAllowance({ events, startISO, liveHours: liveHrs, tz, ignoreId: existing?.id });
-    const { blockStart, blockEnd } = slotState;
+    const { blockStart, blockEnd, dateKey } = slotState;
 
-    if (!existing && dayCapacityReached(events, dayKey, tz)) {
-      console.warn('[webhook] day capacity reached', { date: dayKey, limit: MAX_EVENTS_PER_DAY, tz });
+    if (!existing && dayCapacityReached(events, dateKey, tz)) {
+      console.warn('[webhook] day capacity reached', { startISO, date: dateKey, limit: MAX_EVENTS_PER_DAY, tz });
       return res.json({ received: true, capacity: 'full' });
     }
 
     if (!existing && slotState.concurrentFull) {
-      console.warn('[webhook] concurrent limit hit', { startISO, date: slotState.dateKey, overlapCount: slotState.overlapCount, tz });
+      console.warn('[webhook] concurrent limit hit', { startISO, date: dateKey, overlapCount: slotState.overlapCount, tz });
       return res.json({ received: true, conflict: 'overlap' });
     }
 
