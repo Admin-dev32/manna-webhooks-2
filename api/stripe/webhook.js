@@ -4,11 +4,10 @@ export const config = { api: { bodyParser: false }, runtime: 'nodejs' };
 import Stripe from 'stripe';
 import { getCalendarClient } from '../_google.js'; // <- ruta correcta desde /api/stripe/
 import {
-  blockWindow,
   mapEvents,
-  slotCapacityState,
   dayCapacityReached,
-  MAX_EVENTS_PER_DAY
+  MAX_EVENTS_PER_DAY,
+  evaluateSlotAllowance
 } from '../_calendarRules.js';
 import { getDayBoundsForISO } from '../_dates.js';
 import { composeBookingEmail, sendBookingConfirmation } from '../_email.js';
@@ -79,8 +78,6 @@ export default async function handler(req, res) {
       console.warn('[webhook] missing startISO/hours — skipping calendar insert');
       return res.json({ received: true, skipped: true });
     }
-    const { blockStart, blockEnd } = blockWindow(startISO, liveHrs);
-
     // 4) Cargar eventos del MISMO día (para capacidad y traslape)
     const { timeMin, timeMax, dayKey } = getDayBoundsForISO(startISO, tz);
 
@@ -98,14 +95,16 @@ export default async function handler(req, res) {
     const existing = items.find(e => e.extendedProperties?.private?.orderId === session.id);
     const events = mapEvents(items);
 
+    const slotState = evaluateSlotAllowance({ events, startISO, liveHours: liveHrs, tz, ignoreId: existing?.id });
+    const { blockStart, blockEnd } = slotState;
+
     if (!existing && dayCapacityReached(events, dayKey, tz)) {
       console.warn('[webhook] day capacity reached', { date: dayKey, limit: MAX_EVENTS_PER_DAY, tz });
       return res.json({ received: true, capacity: 'full' });
     }
 
-    const state = slotCapacityState({ events, blockStart, blockEnd, tz, ignoreId: existing?.id });
-    if (!existing && state.concurrentFull) {
-      console.warn('[webhook] concurrent limit hit', { startISO, overlapCount: state.overlapCount, tz });
+    if (!existing && slotState.concurrentFull) {
+      console.warn('[webhook] concurrent limit hit', { startISO, date: slotState.dateKey, overlapCount: slotState.overlapCount, tz });
       return res.json({ received: true, conflict: 'overlap' });
     }
 

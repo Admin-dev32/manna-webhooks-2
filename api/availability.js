@@ -3,12 +3,12 @@ export const config = { runtime: 'nodejs' };
 
 import {
   HOURS_RANGE,
-  blockWindow,
   mapEvents,
-  slotCapacityState,
-  dayCapacityReached
+  dayCapacityReached,
+  evaluateSlotAllowance,
+  MAX_EVENTS_PER_DAY
 } from './_calendarRules.js';
-import { zonedStartISO, getDayBoundsForISO } from './_dates.js';
+import { zonedStartISO, getDayBoundsForISO, getLocalDateKey } from './_dates.js';
 
 export default async function handler(req, res) {
   // CORS
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     const calendar = google.calendar({ version: 'v3', auth: jwt });
 
     // Load all events for the date to compute overlaps
-    const { timeMin: dayStart, timeMax: dayEnd } = getDayBoundsForISO(`${date}T00:00:00`, tz);
+    const { timeMin: dayStart, timeMax: dayEnd, dayKey: requestDayKey } = getDayBoundsForISO(date, tz);
 
     const rsp = await calendar.events.list({
       calendarId: calId,
@@ -72,10 +72,16 @@ export default async function handler(req, res) {
     const items = (rsp.data.items || []).filter(e => e.status !== 'cancelled');
 
     const events = mapEvents(items);
+    events.forEach(ev => {
+      const dateKey = getLocalDateKey(ev.start, tz);
+      console.log('[availability] event date mapping', { start: ev.start.toISOString(), dateKey, tz });
+    });
+
+    const dayKey = requestDayKey || getLocalDateKey(date, tz) || date;
 
     // ✅ Daily capacity — max events per local day using shared helper
-    if (dayCapacityReached(events, date, tz)) {
-      console.log('[availability] day at capacity', { date, events: events.length, tz });
+    if (dayCapacityReached(events, dayKey, tz)) {
+      console.log('[availability] day at capacity', { date: dayKey, events: events.length, limit: MAX_EVENTS_PER_DAY, tz });
       return res.json({ slots: [] });
     }
 
@@ -88,16 +94,18 @@ export default async function handler(req, res) {
       const now = new Date();
       if (start < now) continue;
 
-      // Full block = 1h prep + live service + 1h cleanup
-      const { blockStart, blockEnd } = blockWindow(startIso, liveHours);
-
-      const state = slotCapacityState({ events, blockStart, blockEnd, tz });
+      const state = evaluateSlotAllowance({ events, startISO: startIso, liveHours, tz });
       if (state.dayFull) {
-        console.log('[availability] slot skipped (day at capacity)', { date, hour: h, tz });
+        console.log('[availability] slot skipped (day at capacity)', { date: state.dateKey, hour: h, tz, count: state.dayCount });
         break;
       }
       if (state.concurrentFull) {
-        console.log('[availability] slot blocked (concurrent limit)', { date, hour: h, overlaps: state.overlapCount, tz });
+        console.log('[availability] slot skipped (concurrent)', {
+          date: state.dateKey,
+          hour: h,
+          overlaps: state.overlapCount,
+          tz
+        });
         continue;
       }
 

@@ -427,6 +427,13 @@
 
     .input textarea { resize:vertical; min-height:60px; }
 
+    .manna-address-footer {
+      margin-top:6px;
+      text-align:right;
+      font-size:11px;
+      color:var(--muted);
+    }
+
     .pill-group { display:flex; flex-wrap:wrap; gap:10px; }
     .pill {
       position:relative;
@@ -970,7 +977,10 @@
               </div>
               <div class="field">
                 <label data-i18n="label_venue">Event location / city</label>
-                <div class="input"><textarea data-venue data-i18n-placeholder="placeholder_venue" placeholder="Venue name, city, address"></textarea></div>
+                <div class="input">
+                  <input type="text" id="manna-event-address" data-venue data-i18n-placeholder="placeholder_venue" placeholder="Venue name, city, address">
+                </div>
+                <div class="manna-address-footer"><small>Powered by Google Maps</small></div>
               </div>
               <div class="field">
                 <label data-i18n="label_setup">Setup surface</label>
@@ -1739,4 +1749,34 @@
       applyTranslations();
     })();
   </script>
+  <script>
+    window.initMannaAddressAutocomplete = function initMannaAddressAutocomplete() {
+      try {
+        const input = document.getElementById('manna-event-address');
+        if (!input) return;
+        if (input.dataset.autocompleteReady === '1') return;
+        if (!window.google || !google.maps || !google.maps.places) {
+          console.warn('[manna] Google Maps library not ready');
+          return;
+        }
+        const autocomplete = new google.maps.places.Autocomplete(input, { types: ['geocode'] });
+        input.dataset.autocompleteReady = '1';
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          if (place && place.formatted_address) {
+            input.value = place.formatted_address;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        });
+      } catch (err) {
+        console.error('[manna] address autocomplete init failed', err);
+      }
+    };
+  </script>
+  <!-- Replace YOUR_GOOGLE_MAPS_API_KEY with a valid Maps JavaScript API key -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places&callback=initMannaAddressAutocomplete"
+    async
+    defer
+  ></script>
 </section>

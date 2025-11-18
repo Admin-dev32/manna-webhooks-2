@@ -53,3 +53,9 @@ export function slotCapacityState({ events, blockStart, blockEnd, tz, ignoreId }
 export function dayCapacityReached(events, dateKey, tz, ignoreId) {
   return countEventsOnDate(events, dateKey, tz, ignoreId) >= MAX_EVENTS_PER_DAY;
 }
+
+export function evaluateSlotAllowance({ events = [], startISO, liveHours, tz, ignoreId }) {
+  const { blockStart, blockEnd } = blockWindow(startISO, liveHours);
+  const state = slotCapacityState({ events, blockStart, blockEnd, tz, ignoreId });
+  return { ...state, blockStart, blockEnd };
+}

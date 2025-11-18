@@ -1,12 +1,42 @@
 const DEFAULT_TZ = process.env.TIMEZONE || 'America/Los_Angeles';
 
-function toDate(value) {
+export function zonedStartISO(ymd, hour, tz = DEFAULT_TZ) {
+  const [y, m, d] = (ymd || '').split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const guess = Date.UTC(y, m - 1, d, hour, 0, 0);
+  const asDate = new Date(guess);
+  const inTz = new Date(asDate.toLocaleString('en-US', { timeZone: tz }));
+  const offsetMs = inTz.getTime() - asDate.getTime();
+  return new Date(guess - offsetMs).toISOString();
+}
+
+function toDate(value, tz = DEFAULT_TZ) {
   if (!value) return null;
-  return value instanceof Date ? value : new Date(value);
+  if (value instanceof Date) return value;
+  if (typeof value === 'string') {
+    const dayOnly = value.match(/^(\d{4}-\d{2}-\d{2})$/);
+    if (dayOnly) {
+      const iso = zonedStartISO(dayOnly[1], 12, tz); // midday avoids DST edges
+      return iso ? new Date(iso) : null;
+    }
+    const naive = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})(?::(\d{2}))?(?::(\d{2}))?$/);
+    if (naive) {
+      const [, ymd, hh, mm = '0', ss = '0'] = naive;
+      const baseISO = zonedStartISO(ymd, Number(hh), tz);
+      if (baseISO) {
+        const dt = new Date(baseISO);
+        dt.setMinutes(dt.getMinutes() + Number(mm));
+        dt.setSeconds(dt.getSeconds() + Number(ss));
+        return dt;
+      }
+    }
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 export function getLocalDateKey(isoLike, tz = DEFAULT_TZ) {
-  const date = toDate(isoLike);
+  const date = toDate(isoLike, tz);
   if (!date || Number.isNaN(date.getTime())) return '';
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: tz,
@@ -21,27 +51,31 @@ export function getLocalDateKey(isoLike, tz = DEFAULT_TZ) {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
-export function zonedStartISO(ymd, hour, tz = DEFAULT_TZ) {
-  const [y, m, d] = (ymd || '').split('-').map(Number);
-  if (!y || !m || !d) return null;
-  const guess = Date.UTC(y, m - 1, d, hour, 0, 0);
-  const asDate = new Date(guess);
-  const inTz = new Date(asDate.toLocaleString('en-US', { timeZone: tz }));
-  const offsetMs = inTz.getTime() - asDate.getTime();
-  return new Date(guess - offsetMs).toISOString();
-}
-
 export function getDayBoundsForISO(isoLike, tz = DEFAULT_TZ) {
-  const dateKey = getLocalDateKey(isoLike, tz);
+  let dateKey = '';
+  if (typeof isoLike === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(isoLike)) {
+      dateKey = isoLike;
+    } else if (/^\d{4}-\d{2}-\d{2}T/.test(isoLike) && !(/[zZ]$/.test(isoLike) || /[+-]\d{2}:\d{2}$/.test(isoLike))) {
+      dateKey = isoLike.slice(0, 10);
+    }
+  }
+  if (!dateKey) {
+    dateKey = getLocalDateKey(isoLike, tz);
+  }
   if (!dateKey) {
     return { dayKey: '', timeMin: null, timeMax: null };
   }
-  const start = zonedStartISO(dateKey, 0, tz);
+  const timeMin = zonedStartISO(dateKey, 0, tz);
   const endBase = zonedStartISO(dateKey, 23, tz);
-  const end = endBase ? new Date(new Date(endBase).getTime() + 59 * 60 * 1000 + 59 * 1000).toISOString() : null;
+  const end = endBase ? new Date(endBase) : null;
+  if (end) {
+    end.setMinutes(end.getMinutes() + 59);
+    end.setSeconds(end.getSeconds() + 59);
+  }
   return {
     dayKey: dateKey,
-    timeMin: start,
-    timeMax: end
+    timeMin,
+    timeMax: end ? end.toISOString() : null
   };
 }
