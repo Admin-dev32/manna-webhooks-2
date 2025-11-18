@@ -1,0 +1,944 @@
+<section id="manna-booking-steps" aria-label="Manna Snack Bars – Booking">
+  <!-- Set your backend API base here -->
+  <script>
+    window.MANNA_API_BASE = "https://manna-webhooks-2.vercel.app"; /* 👈 change if needed */
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+
+    /* ===== Theme ===== */
+    #manna-booking-steps{
+      --ink:#0b1020; --bg:#f7f8ff; --card:#fff; --muted:#667085;
+      --accent:#a78bfa; --accent2:#f472b6; --ring:#e5e7eb; --ok:#10b981; --danger:#ef4444;
+      font-family:'Plus Jakarta Sans', Inter, system-ui, sans-serif;
+      background:var(--bg);
+    }
+
+    /* ===== Layout (fixed-height stage; no side margins) ===== */
+    #manna-booking-steps .wrap{
+      max-width:980px; margin:0 auto; padding:0 0 120px;
+    }
+    #manna-booking-steps .stage{
+      min-height:640px; /* fixed visual area so slides don’t jump */
+      display:grid; grid-template-rows:auto 1fr auto; gap:10px;
+      padding:12px 0;
+      overflow-x:hidden; /* 🔒 prevent any horizontal overflow (calendar on mobile) */
+    }
+    @media (max-width:640px){
+      #manna-booking-steps .stage{ min-height:700px; }
+    }
+
+    .h1{margin:0 0 6px;font-weight:800;color:#111;font-size:clamp(22px,3vw,30px)}
+.sub{margin:0 0 8px;color:var(--muted);font-weight:600}
+
+
+    /* ===== Cards ===== */
+    .card{background:var(--card);border:1px solid #eef0f6;border-radius:18px;
+      box-shadow:0 14px 28px rgba(15,23,42,.08);padding:16px}
+
+    /* ===== Top & Bottom Controls (sticky) ===== */
+    .controls{display:flex;justify-content:center;gap:10px}
+    .controls.top{
+      position:sticky;top:0;background:#fff;border-bottom:1px solid #eef0f6;
+      padding:10px 12px;z-index:5
+    }
+    .controls.bottom{
+      position:sticky;bottom:0;background:#fff;border-top:1px solid #eef0f6;
+      padding:12px 12px calc(12px + env(safe-area-inset-bottom,0px));z-index:5
+    }
+    .btn{
+      padding:12px 18px;border:none;border-radius:999px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      color:#fff;font-weight:800;cursor:pointer;
+      box-shadow:0 10px 22px rgba(167,139,250,.25);letter-spacing:.2px
+    }
+    .btn[disabled]{opacity:.5;cursor:not-allowed}
+    .btn-secondary{background:#fff;border:1.5px solid #e5e7eb;color:#111;box-shadow:0 8px 18px rgba(15,23,42,.06)}
+    .btn-prev::before{content:'←';margin-right:8px;font-weight:900}
+    .btn-next::after{content:'→';margin-left:8px;font-weight:900}
+
+    /* ===== Stepper ===== */
+    .stepper{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:8px 0 4px}
+    .dot{height:8px;border-radius:999px;background:#e5e7eb;transition:background .2s,width .2s}
+    .dot.is-active{background:linear-gradient(90deg,var(--accent),var(--accent2))}
+    .progress{height:6px;background:#eef0f6;border-radius:999px;overflow:hidden;margin-bottom:8px}
+    .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .25s ease}
+
+    /* ===== Slides ===== */
+    .slides{position:relative}
+    .slide{display:none}
+    .slide.is-on{display:block;animation:fadeIn .22s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+    /* ===== Choice tiles ===== */
+    .choices{display:grid;gap:14px;margin-top:10px}
+    .choice{display:flex;gap:12px;align-items:flex-start;border:2px solid #eceff3;border-radius:16px;padding:16px;background:#fff;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.05);transition:transform .08s,border-color .2s,box-shadow .2s;overflow:hidden}
+    .choice:hover{transform:translateY(-1px)}
+    .choice input{appearance:none;margin-top:2px;width:22px;height:22px;border:2px solid #cbd5e1;border-radius:6px;flex:0 0 auto}
+    .choice input:checked{background:var(--accent2);border-color:var(--accent2)}
+    .t1{font-weight:800}.t2{font-size:13px;color:#667085;font-weight:600}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .chip{background:#eef2ff;color:#3730a3;border-radius:999px;padding:6px 10px;font:700 12px/1 'Plus Jakarta Sans',Inter}
+
+    /* ===== EXPANDABLE DETAILS (Step 1 only) ===== */
+    .choice .content{display:flex;flex-direction:column;gap:6px;width:100%}
+    .bar-details{
+      max-height:0; padding:0; margin-top:8px; overflow:hidden;
+      border-top:1px solid #f1f5f9;
+      transition:max-height .35s ease, padding .25s ease;
+      font-size:13px; color:#374151; line-height:1.45;
+    }
+    .choice.expanded{border-color:#c4b5fd;box-shadow:0 12px 26px rgba(167,139,250,.22)}
+    .choice.expanded .bar-details{max-height:900px;padding:10px 2px}
+    .bar-details b{color:#111}
+    .bd-row{margin:.25rem 0}
+    .bd-list{margin:.35rem 0 .1rem 1.15rem;padding:0}
+    .bd-list li{margin:.15rem 0}
+
+    /* ===== Form fields ===== */
+    .field{display:grid;gap:8px;margin-top:12px}
+    .field label{font-weight:800;color:#111}
+    .input{display:flex;gap:10px;align-items:center;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:12px;background:#f9fafb}
+    .input input,.input textarea,.input select{border:none;background:transparent;outline:none;width:100%;font-size:16px;color:#374151}
+    .input textarea{min-height:44px;resize:vertical}
+    .pill-group{display:flex;gap:10px;flex-wrap:wrap}
+    .pill{position:relative;display:inline-flex;align-items:center;cursor:pointer;border:1.5px solid #e5e7eb;border-radius:14px;background:#fff;padding:12px 14px;box-shadow:0 6px 14px rgba(17,24,39,.05)}
+    .pill:hover{transform:translateY(-1px)}
+    .pill input{appearance:none;position:absolute;opacity:0}
+    .pill-body{display:flex;align-items:center;gap:8px;font-weight:800;color:#111}
+    .pill input:checked + .pill-body{background:linear-gradient(135deg,#fde2f3,#e9d5ff);border-radius:10px;padding:2px 4px;box-shadow:0 8px 22px rgba(167,139,250,.20), inset 0 0 0 1px #d8b4fe}
+
+    /* ===== Calendar ===== */
+    .cal{background:#fff;border:1px solid #eee;border-radius:16px;padding:14px;max-width:100%;overflow:hidden} /* 🔒 keep inside card */
+    .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .cal-title{font-weight:900;color:#111}
+    .cal-btn{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:8px 10px;cursor:pointer}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;width:100%}
+    .dow{font-size:12px;color:#6b7280;text-align:center;font-weight:700}
+    .day{padding:10px;border:1px solid #e5e7eb;border-radius:10px;text-align:center;cursor:pointer;background:#fff}
+    .day.off{opacity:.35;cursor:default}
+    .day.sel{border-color:#a78bfa;background:#f5f3ff}
+
+    .slot-grid{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:12px;width:100%}
+    @media (max-width:700px){.slot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:420px){.slot-grid{grid-template-columns:1fr}}
+    .slot{
+      appearance:none;display:block;width:100%;padding:12px 10px;border:1.5px solid #e5e7eb;border-radius:12px;background:linear-gradient(180deg,#fff,#f9fafb);text-align:center;font:800 14px/1.2 Inter,system-ui;letter-spacing:.2px;white-space:nowrap;cursor:pointer;transition:transform .08s,box-shadow .16s,border-color .16s,background .16s;box-shadow:0 6px 14px rgba(17,24,39,.06);color:#111}
+    .slot:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(17,24,39,.10)}
+    .slot.sel{border-color:#c4b5fd;background:linear-gradient(135deg,#fde2f3,#e9d5ff);box-shadow:0 12px 26px rgba(167,139,250,.25);transform:translateY(-1px)}
+    .slot[disabled]{opacity:.5;cursor:not-allowed;background:#f3f4f6;box-shadow:none}
+
+    /* ===== Summary (Step 5 improved) ===== */
+    .summary-grid{
+      display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin-top:8px
+    }
+    .panel{
+      border:1px solid #eef0f6;background:#fff;border-radius:16px;padding:14px;
+      box-shadow:0 10px 20px rgba(15,23,42,.06)
+    }
+    .panel h3{
+      margin:0 0 8px;font-weight:800;color:#0b1020;font-size:clamp(16px,2.6vw,18px)
+    }
+    .kv{display:grid;grid-template-columns:120px 1fr;gap:8px;font-size:14px}
+    .kv .k{color:#6b7280;font-weight:700}
+    .kv .v{color:#0f172a;font-weight:700}
+    .divider{height:1px;background:#eef0f6;margin:10px 0}
+    .totals{display:grid;gap:8px}
+    .tot-row{display:flex;justify-content:space-between;align-items:center}
+    .tot-label{color:#475569;font-weight:700}
+    .tot-amt{font-weight:900;font-size:clamp(20px,3.2vw,26px)}
+    .save{color:#10b981;font-weight:900}
+    .fine{font-size:12.5px;color:#64748b}
+    .badge{
+      display:inline-flex;align-items:center;gap:6px;
+      background:#eef2ff;color:#3730a3;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;font:800 12px/1 'Plus Jakarta Sans',Inter
+    }
+    .pay-actions{display:flex;flex-direction:column;gap:8px}
+    .help{font-size:12.5px;color:#6b7280}
+
+    @media (max-width:820px){
+      .summary-grid{grid-template-columns:1fr;gap:12px}
+    }
+
+    /* ===== Mobile compaction ===== */
+    @media (max-width:640px){
+      #manna-booking-steps .wrap{max-width:none;margin:0}
+      .card{border-radius:0;border-left:none;border-right:none}
+      .controls.top{margin:0}
+      .progress{margin:0;border-radius:0}
+      .bar-details{font-size:12.75px}
+    }
+/* ===== MOBILE OVERFLOW FIXES FOR STEP 5 ===== */
+#manna-booking-steps .summary-grid,
+#manna-booking-steps .panel,
+#manna-booking-steps .kv,
+#manna-booking-steps .pay-actions,
+#manna-booking-steps .btn {
+  max-width: 100%;
+}
+
+#manna-booking-steps .panel {
+  overflow: hidden; /* keeps any wide child from spilling out */
+}
+
+/* Let the right column shrink and wrap long content (emails, badge text) */
+#manna-booking-steps .kv .v {
+  min-width: 0;                 /* critical for CSS grid shrinking */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Make Selection badge wrap instead of forcing the column wider than the card */
+#manna-booking-steps .badge {
+  display: inline-flex;
+  flex-wrap: wrap;
+  white-space: normal;
+  max-width: 100%;
+  line-height: 1.2;
+}
+
+/* Ensure the Pay button never exceeds the card width on small screens */
+#manna-booking-steps .pay-actions .btn {
+  width: 100%;
+}
+
+/* Small-screen typography & column fit */
+@media (max-width: 640px){
+  #manna-booking-steps .kv { grid-template-columns: 96px 1fr; }
+  #manna-booking-steps .tot-amt { font-size: clamp(18px,5.2vw,24px); }
+}
+
+/* ===== MOBILE CALENDAR OVERFLOW FIXES ===== */
+
+/* Make sure every box measures with borders/padding inside width */
+#manna-booking-steps, 
+#manna-booking-steps * { box-sizing: border-box; }
+
+/* Keep the calendar strictly inside the card */
+#manna-booking-steps .cal {
+  max-width: 100%;
+  overflow: hidden;            /* prevents any horizontal bleed */
+}
+
+/* Prevent the 7-column grid from forcing extra width */
+#manna-booking-steps .cal-grid {
+  width: 100%;
+  grid-template-columns: repeat(7, minmax(0, 1fr));  /* allow columns to shrink */
+}
+
+/* Day cells behave nicely at tiny widths */
+#manna-booking-steps .day {
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* Header text can shrink/wrap instead of stretching the row */
+#manna-booking-steps .cal-head {
+  min-width: 0;
+}
+#manna-booking-steps .cal-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Slot grid never exceeds the card */
+#manna-booking-steps .slot-grid { 
+  width: 100%;
+  min-width: 0;
+}
+
+/* Extra tightening for very small phones */
+@media (max-width: 420px){
+  #manna-booking-steps .cal       { padding: 10px; }
+  #manna-booking-steps .cal-grid  { gap: 6px; }
+  #manna-booking-steps .day       { padding: 8px; font-size: 12px; }
+  #manna-booking-steps .dow       { font-size: 11px; }
+}
+
+/* (From prior fix) keep summary/badge wrapped & inside card */
+#manna-booking-steps .summary-grid,
+#manna-booking-steps .panel,
+#manna-booking-steps .kv,
+#manna-booking-steps .pay-actions,
+#manna-booking-steps .btn { max-width: 100%; }
+
+#manna-booking-steps .panel { overflow: hidden; }
+#manna-booking-steps .kv .v { min-width: 0; word-break: break-word; overflow-wrap: anywhere; }
+#manna-booking-steps .badge { display: inline-flex; flex-wrap: wrap; white-space: normal; max-width: 100%; line-height: 1.2; }
+#manna-booking-steps .pay-actions .btn { width: 100%; }
+
+@media (max-width: 640px){
+  #manna-booking-steps .kv { grid-template-columns: 96px 1fr; }
+  #manna-booking-steps .tot-amt { font-size: clamp(18px,5.2vw,24px); }
+}
+
+
+  </style>
+
+  <div class="wrap">
+    <!-- Top Controls -->
+    <div class="controls top" role="group" aria-label="Top step controls">
+      <button class="btn btn-secondary btn-prev" data-top-prev disabled>Back</button>
+      <button class="btn btn-next" data-top-next disabled>Next</button>
+    </div>
+
+    <!-- Stage (fixed-height content area) -->
+    <div class="stage">
+      <!-- Stepper -->
+      <div>
+        <div class="stepper" aria-hidden="true">
+          <div class="dot is-active" data-dot="0"></div>
+          <div class="dot" data-dot="1"></div>
+          <div class="dot" data-dot="2"></div>
+          <div class="dot" data-dot="3"></div>
+          <div class="dot" data-dot="4"></div>
+        </div>
+        <div class="progress"><div class="bar" data-bar></div></div>
+      </div>
+
+      <!-- Slides -->
+      <div class="slides" role="region" aria-live="polite">
+        <!-- STEP 1: Main bar -->
+        <div class="slide is-on" data-step="0">
+          <div class="card">
+            <h2 class="h1">1) Choose your main bar</h2>
+            <div class="small" data-running>Current total: $0 • Due now: $0</div>
+
+            <div class="choices" data-choices="bar" aria-label="Pick your main bar">
+              <!-- Pancake -->
+              <label class="choice" data-bar="pancake">
+                <input type="radio" name="bar" value="pancake">
+                <div class="content">
+                  <div>
+                    <div class="t1">🥞 Mini Pancake</div>
+                    <div class="t2">Fresh, fluffy minis with toppings.</div>
+                  </div>
+                  <div class="bar-details">
+                    <div class="bd-row"><b>Description:</b> Delicious mini pancakes made to order, with sweet and healthy toppings for every taste.</div>
+                    <div class="bd-row">🎯 <b>Includes:</b></div>
+                    <div class="bd-row">🫐 <b>Large Containers:</b></div>
+                    <ul class="bd-list">
+                      <li>Fresh strawberries</li>
+                      <li>Blueberries</li>
+                      <li>Mini marshmallows 🍫</li>
+                    </ul>
+                    <div class="bd-row">🍯 <b>Small Containers:</b></div>
+                    <ul class="bd-list">
+                      <li>Granola, Sliced almonds, Walnuts</li>
+                      <li>Chocolate chips, Rainbow sprinkles, Shredded coconut</li>
+                      <li>Powdered sugar, Mini Reese’s, Lucky Charms cereal</li>
+                    </ul>
+                  </div>
+                </div>
+              </label>
+
+              <!-- Esquites -->
+              <label class="choice" data-bar="esquites">
+                <input type="radio" name="bar" value="esquites">
+                <div class="content">
+                  <div>
+                    <div class="t1">🌽 Esquites</div>
+                    <div class="t2">Street-style corn with toppings.</div>
+                  </div>
+                  <div class="bar-details">
+                    <div class="bd-row"><b>Description:</b> Mexican street-style corn served in cups with classic and fresh toppings.</div>
+                    <div class="bd-row">🎯 <b>Includes:</b> Corn kernels, Mayonnaise, Butter, Grated cheese, Tajín, Fresh lime, Chili powder, Crushed Hot Cheetos, Crushed Takis.</div>
+                  </div>
+                </div>
+              </label>
+
+              <!-- Maruchan -->
+              <label class="choice" data-bar="maruchan">
+                <input type="radio" name="bar" value="maruchan">
+                <div class="content">
+                  <div>
+                    <div class="t1">🍜 Maruchan</div>
+                    <div class="t2">Cup noodles, hot & tasty.</div>
+                  </div>
+                  <div class="bar-details">
+                    <div class="bd-row"><b>Description:</b> Event favorite: instant noodles served with style and irresistible add-ons.</div>
+                    <div class="bd-row">🎯 <b>Includes:</b></div>
+                    <div class="bd-row">🍵 <b>Large Containers:</b> Cream, Tajín, Worcestershire sauce, Chili oil, Tabasco, House sauce.</div>
+                    <div class="bd-row">🍟 <b>Small Containers:</b> Fresh lime, Corn, Hot Cheetos, Takis, Doritos, Ruffles.</div>
+                  </div>
+                </div>
+              </label>
+
+              <!-- Tostiloco -->
+              <label class="choice" data-bar="tostiloco">
+                <input type="radio" name="bar" value="tostiloco">
+                <div class="content">
+                  <div>
+                    <div class="t1">🌶️ Tostiloco (Premium +$50)</div>
+                    <div class="t2">Mexican snack station with spice.</div>
+                  </div>
+                  <div class="bar-details">
+                    <div class="bd-row"><b>Description:</b> A bold mix of Mexican flavors with tangy, spicy snacks made to order.</div>
+                    <div class="bd-row">🎯 <b>Includes:</b></div>
+                    <div class="bd-row">🍽️ <b>Large Containers:</b> Tostitos chips, Fried duritos.</div>
+                    <div class="bd-row">🌶️ <b>Small Containers:</b> Japanese peanuts, Pickled pork skins (cueritos), Tamarind sticks, Spicy pineapple rings, Fresh cucumber, Fresh jicama, Pulparindos, Spicy peanuts.</div>
+                  </div>
+                </div>
+              </label>
+
+              <!-- NEW: Snack Bar – La Clásica -->
+              <label class="choice" data-bar="snack">
+                <input type="radio" name="bar" value="snack">
+                <div class="content">
+                  <div>
+                    <div class="t1">🍭 Manna Snack Bar — “La Clásica”</div>
+                    <div class="t2">Chips & Mexican candies. Colorful, fun, and delicious.</div>
+                  </div>
+                  <div class="bar-details">
+                    <div class="bd-row"><b>Description:</b> A festive corner filled with the most popular Mexican chips and candies. Chamoy, Tajín, Valentina, Doritos, Lay’s, Pulparindos, Vero Lollipops, and more — a 100% Mexican flavor experience.</div>
+                    <div class="bd-row">🧺 <b>Setup:</b> 3 big trays (chips & main toppings) + 9 small trays (candies & utensils).</div>
+                    <div class="bd-row">🧂 <b>Big Trays:</b></div>
+                    <ul class="bd-list">
+                      <li>Liquid chamoy • Fresh lime • Tajín • Valentina</li>
+                      <li><b>Classic Chips Mix:</b> Ruffles, Lay’s</li>
+                      <li><b>Doritos Mix:</b> Doritos Nacho, Doritos Flamas (or Spicy Sweet Chili depending on event)</li>
+                    </ul>
+                    <div class="bd-row">🍬 <b>Small Trays (9):</b></div>
+                    <ul class="bd-list">
+                      <li>Mexican flag toothpicks 🇲🇽</li>
+                      <li>Pulparindos (original & extra spicy tamarind)</li>
+                      <li>Pelonazo • Squinkles (Salsagueti style)</li>
+                      <li>Vero Lollipops (mango, elote, watermelon, assorted)</li>
+                      <li>Pineapple Rings 🍍 (spicy or sweet)</li>
+                      <li>Pica Fresas 🍓</li>
+                      <li>Tarrito & Cucumber lollipops 🥒</li>
+                      <li>Utensils (forks, napkins, skewers, etc.)</li>
+                    </ul>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div class="chips"><span class="chip">Taxes included</span><span class="chip">2 attendants</span><span class="chip">Extra hour $150</span></div>
+          </div>
+        </div>
+
+        <!-- STEP 2: Package size -->
+        <div class="slide" data-step="1">
+          <div class="card">
+            <h2 class="h1">2) How many guests?</h2>
+            <div class="small" data-running>Current total: $0 • Due now: $0</div>
+
+            <div class="choices" data-choices="pkg">
+              <label class="choice"><input type="radio" name="pkg" value="50-150-5h" data-hours="2"><div><div class="t1">50–150 guests</div><div class="t2">2 hours live service</div></div></label>
+              <label class="choice"><input type="radio" name="pkg" value="150-250-5h" data-hours="2.5"><div><div class="t1">150–250 guests</div><div class="t2">2.5 hours live service</div></div></label>
+              <label class="choice"><input type="radio" name="pkg" value="250-350-6h" data-hours="3"><div><div class="t1">250–350 guests</div><div class="t2">3 hours live service</div></div></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: Add-ons -->
+        <div class="slide" data-step="2">
+          <div class="card">
+            <h2 class="h1">3) Optional add-ons</h2>
+            <div class="small" data-running>Current total: $0 • Due now: $0</div>
+
+            <!-- Second bar -->
+            <label class="choice"><input type="checkbox" data-second>
+              <div>
+                <div class="t1">Add a second standard bar</div>
+                <div class="t2">Discount applies by size</div>
+              </div>
+            </label>
+            <div data-second-wrap style="display:none">
+              <div class="choices" style="grid-template-columns:1fr 1fr">
+                <div>
+                  <div class="t2">Which bar</div>
+                  <select data-second-bar>
+                    <option value="pancake">Mini Pancake</option>
+                    <option value="esquites">Esquites</option>
+                    <option value="maruchan">Maruchan</option>
+                    <option value="snack">Manna Snack “La Clásica”</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="t2">Guests</div>
+                  <select data-second-size>
+                    <option value="50-150-5h">50–150</option>
+                    <option value="150-250-5h">150–250</option>
+                    <option value="250-350-6h">250–350</option>
+                  </select>
+                </div>
+              </div>
+              <div class="t2" data-second-price>Second bar total: $0</div>
+            </div>
+
+            <!-- Fountain -->
+            <label class="choice"><input type="checkbox" data-fountain>
+              <div>
+                <div class="t1">Chocolate Fountain Table</div>
+                <div class="t2">50/100/150 guests</div>
+              </div>
+            </label>
+            <div data-fountain-wrap style="display:none">
+              <div class="choices" style="grid-template-columns:1fr 1fr">
+                <div>
+                  <div class="t2">Fountain size</div>
+                  <select data-fountain-size>
+                    <option value="50">50 people — $350</option>
+                    <option value="100">100 people — $450</option>
+                    <option value="150">150 people — $550</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="t2">Chocolate type</div>
+                  <select data-fountain-type disabled>
+                    <option value="dark">Dark/Milk</option>
+                    <option value="white">White (+$50)</option>
+                    <option value="mixed">Mixed (+$50)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 4: Date + Time -->
+        <div class="slide" data-step="3">
+          <div class="card">
+            <h2 class="h1">4) Pick date & time</h2>
+            <div class="small">Calendar blocks 1h setup + service + 1h cleanup</div>
+
+            <div class="cal">
+              <div class="cal-head">
+                <button class="cal-btn" data-prev type="button">‹</button>
+                <div class="cal-title" data-cal-title>Month YYYY</div>
+                <button class="cal-btn" data-next type="button">›</button>
+              </div>
+              <div class="cal-grid" data-cal-grid></div>
+              <div class="slot-grid" data-slot-grid></div>
+              <p class="note" data-slot-hint>Select a date to load available times.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 5: Your info + Pay (IMPROVED LAYOUT) -->
+        <div class="slide" data-step="4">
+          <div class="card">
+            <h2 class="h1">5) Your info & pay</h2>
+
+            <div class="summary-grid">
+              <!-- Left: Contact & Event Details -->
+              <div class="panel">
+                <h3>Contact & Event</h3>
+                <div class="field">
+                  <label>Full name</label>
+                  <div class="input"><input data-name type="text" placeholder="Full name"></div>
+                </div>
+                <div class="field">
+                  <label>Email</label>
+                  <div class="input"><input data-email type="email" inputmode="email" autocomplete="email" placeholder="you@email.com"></div>
+                </div>
+                <div class="field">
+                  <label>Phone</label>
+                  <div class="input"><input data-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="(555) 555-5555"></div>
+                </div>
+                <div class="field">
+                  <label>Venue address</label>
+                  <div class="input"><textarea data-venue rows="2" placeholder="Venue name & full address"></textarea></div>
+                </div>
+
+                <div class="field">
+                  <label>Setup location</label>
+                  <div class="pill-group" data-setup>
+                    <label class="pill"><input type="radio" name="setup" value="indoors"><div class="pill-body">🏠 <span>Indoors</span></div></label>
+                    <label class="pill"><input type="radio" name="setup" value="outdoors"><div class="pill-body">🌤️ <span>Outdoors</span></div></label>
+                    <label class="pill"><input type="radio" name="setup" value="not_sure"><div class="pill-body">🤔 <span>Not sure</span></div></label>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Electricity available (120V outlet nearby)?</label>
+                  <div class="pill-group" data-power>
+                    <label class="pill"><input type="radio" name="power" value="yes"><div class="pill-body">🔌 <span>Yes</span></div></label>
+                    <label class="pill"><input type="radio" name="power" value="no"><div class="pill-body">🚫 <span>No</span></div></label>
+                    <label class="pill"><input type="radio" name="power" value="not_sure"><div class="pill-body">🤷 <span>Not sure</span></div></label>
+                  </div>
+                  <div class="fine">We bring extension cords.</div>
+                </div>
+
+                <div class="field">
+                  <label>Payment</label>
+                  <div class="choices" style="grid-template-columns:1fr 1fr;margin-top:6px">
+                    <label class="choice"><input type="radio" name="pay" value="deposit" checked><div><div class="t1">Pay 25% deposit</div><div class="t2">Save your date</div></div></label>
+                    <label class="choice"><input type="radio" name="pay" value="full"><div><div class="t1">Pay in full</div><div class="t2">Flat $20 off • Affirm available</div></div></label>
+                  </div>
+                </div>
+
+                <div class="field" style="margin-top:8px">
+                  <label style="display:flex; gap:10px; align-items:center">
+                    <input data-policy type="checkbox"> I agree to the <a href="/terms-and-conditions" target="_blank" rel="noopener noreferrer">booking policy</a>.
+
+                  </label>
+                </div>
+              </div>
+
+              <!-- Right: Review & Total -->
+              <div class="panel">
+                <h3>Review & Total</h3>
+
+                <div class="kv" style="margin-bottom:8px">
+                  <div class="k">Selection</div>
+                  <div class="v"><span class="badge" data-sum-main>—</span></div>
+
+                  <div class="k">Event date</div>
+                  <div class="v" data-sum-date>—</div>
+
+                  <div class="k">Contact</div>
+                  <div class="v" data-sum-user>—</div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="totals">
+                  <div class="tot-row">
+                    <div class="tot-label">Total</div>
+                    <div class="tot-amt" data-sum-total>$0</div>
+                  </div>
+                  <div class="tot-row">
+                    <div class="tot-label">Due now</div>
+                    <div class="tot-amt" data-sum-due>$0</div>
+                  </div>
+                  <div class="tot-row">
+                    <div class="tot-label">Savings</div>
+                    <div class="save" data-sum-save>$0</div>
+                  </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="pay-actions">
+                  <button class="btn" data-pay type="button" disabled>🔒 Pay now</button>
+                  <div class="help">Secure Stripe Checkout. “Pay in full” can use Affirm (subject to eligibility).</div>
+                  <div class="fine">Taxes included • 2 attendants • Extra hour $150</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Controls -->
+      <div class="controls bottom" role="group" aria-label="Bottom step controls">
+        <button class="btn btn-secondary btn-prev" data-bottom-prev disabled>Back</button>
+        <button class="btn btn-next" data-bottom-next disabled>Next</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const root = document.getElementById('manna-booking-steps');
+    const API_BASE = (window.MANNA_API_BASE || "").trim();
+    const $ = s => root.querySelector(s);
+    const $$ = s => Array.from(root.querySelectorAll(s));
+    const fmt = n => n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+
+    /* ===== Pricing ===== */
+    const BASE_PRICES = { "50-150-5h":550, "150-250-5h":700, "250-350-6h":900 };
+    const SECOND_DISCOUNT = { "50-150-5h":50, "150-250-5h":75, "250-350-6h":100 };
+    const FOUNTAIN_PRICE = { "50":350, "100":450, "150":550 };
+    const BAR_META = {
+      pancake:{ title:'🥞 Mini Pancake Bar', add:0 },
+      esquites:{ title:'🌽 Esquite Bar', add:0 },
+      maruchan:{ title:'🍜 Maruchan Bar', add:0 },
+      tostiloco:{ title:'🌶️ Tostiloco Bar (Premium)', add:50 },
+      snack:{ title:'🍭 Manna Snack Bar — “La Clásica”', add:0 } // NEW
+    };
+    const FULL_FLAT_OFF = 20; // 👈 flat $20 off when paying in full
+
+    /* ===== State ===== */
+    const state = {
+      step:0,
+      mainBar:null,
+      pkg:null,
+      hours:null,
+      secondEnabled:false, secondBar:'pancake', secondSize:'50-150-5h',
+      fountainEnabled:false, fountainSize:'50', fountainType:'dark',
+      cal:new Date(), dateISO:null, startISO:null,
+      name:'', email:'', phone:'', venue:'', setup:null, power:null,
+      pay:'deposit',
+      policy:false
+    };
+
+    /* ===== Stepper nav ===== */
+    const slides = $$('[data-step]');
+    const dots = $$('[data-dot]');
+    const barEl = $('[data-bar]');
+    function go(n){
+      state.step = Math.max(0, Math.min(n, slides.length-1));
+      slides.forEach((s,i)=>s.classList.toggle('is-on', i===state.step));
+      dots.forEach((d,i)=>d.classList.toggle('is-active', i<=state.step));
+      const pct = (state.step/(slides.length-1))*100; barEl.style.width = pct+'%';
+      updateControls();
+      if (state.step===4) renderSummary();
+    }
+
+    const topPrev=$('[data-top-prev]'), topNext=$('[data-top-next]');
+    const botPrev=$('[data-bottom-prev]'), botNext=$('[data-bottom-next]');
+    function setNextLabel(btn){
+      const labels=['Next','Next','Next','Next','Pay now'];
+      btn.textContent = labels[state.step] || 'Next';
+    }
+    function canNext(){
+      if (state.step===0) return !!state.mainBar;
+      if (state.step===1) return !!state.pkg;
+      if (state.step===2) return true;
+      if (state.step===3) return !!(state.dateISO && state.startISO);
+      if (state.step===4) return !!readyToPay();
+      return false;
+    }
+    function updateControls(){
+      [topPrev,botPrev].forEach(b=> b.disabled = (state.step===0));
+      [topNext,botNext].forEach(b=>{ setNextLabel(b); b.disabled = !canNext(); });
+      $('[data-pay]').disabled = !readyToPay();
+    }
+    function handlePrev(){ go(state.step-1); }
+    function handleNext(){ if (state.step<4) go(state.step+1); else doPay(); }
+    ;[topPrev,botPrev].forEach(b=> b.addEventListener('click', handlePrev));
+    ;[topNext,botNext].forEach(b=> b.addEventListener('click', handleNext));
+
+    /* ===== Selections ===== */
+    // STEP 1: Bars (expand/collapse)
+    const barInputs = $$('[data-choices="bar"] input[name="bar"]');
+    const barLabels = $$('[data-choices="bar"] label.choice');
+    function expandForValue(val){
+      barLabels.forEach(l => {
+        const isTarget = (l.getAttribute('data-bar') === val);
+        l.classList.toggle('expanded', isTarget);
+      });
+    }
+    barInputs.forEach(inp=>{
+      inp.addEventListener('change',()=>{
+        state.mainBar = inp.value;
+        expandForValue(inp.value);
+        updateControls();
+        updateRunningTotal();
+      });
+      const lbl = inp.closest('label');
+      lbl.addEventListener('click',()=>{
+        if(!inp.checked){
+          inp.checked = true;
+          inp.dispatchEvent(new Event('change',{bubbles:true}));
+        }else{
+          expandForValue(inp.value);
+        }
+      });
+    });
+
+    // STEP 2: Package
+    $$('[data-choices="pkg"] input[name="pkg"]').forEach(inp=>{
+      inp.addEventListener('change',()=>{
+        state.pkg=inp.value;
+        state.hours=parseFloat(inp.dataset.hours||'0')||0;
+        updateSecondShownPrice();
+        updateRunningTotal();
+        renderCalendar();
+        loadSlotsIfDate();
+        updateControls();
+      });
+      inp.closest('label').addEventListener('click',()=>{ if(!inp.checked){ inp.checked=true; inp.dispatchEvent(new Event('change',{bubbles:true})); } });
+    });
+
+    /* ===== Add-ons: second bar ===== */
+    const elSecond=$('[data-second]'), secondWrap=$('[data-second-wrap]');
+    const elSecondBar=$('[data-second-bar]'), elSecondSize=$('[data-second-size]'), elSecondPrice=$('[data-second-price]');
+    elSecond.addEventListener('change',()=>{ state.secondEnabled=elSecond.checked; secondWrap.style.display=state.secondEnabled?'':'none'; updateSecondShownPrice(); updateRunningTotal(); });
+    elSecondBar.addEventListener('change',()=>{ state.secondBar=elSecondBar.value; updateSecondShownPrice(); updateRunningTotal(); });
+    elSecondSize.addEventListener('change',()=>{ state.secondSize=elSecondSize.value; updateSecondShownPrice(); updateRunningTotal(); });
+    function updateSecondShownPrice(){
+      const base=BASE_PRICES[state.secondSize]||0, disc=SECOND_DISCOUNT[state.secondSize]||0;
+      const val=Math.max(base-disc,0);
+      elSecondPrice.textContent = state.secondEnabled?`Second bar total: ${fmt(val)} (includes ${fmt(disc)} off)`:'Second bar total: $0';
+    }
+
+    /* ===== Add-ons: fountain ===== */
+    const elFountain=$('[data-fountain]'), fWrap=$('[data-fountain-wrap]');
+    const elFSize=$('[data-fountain-size]'), elFType=$('[data-fountain-type]');
+    elFountain.addEventListener('change',()=>{ state.fountainEnabled=elFountain.checked; fWrap.style.display=state.fountainEnabled?'':'none'; elFType.disabled=!state.fountainEnabled; updateRunningTotal(); });
+    elFSize.addEventListener('change',()=>{ state.fountainSize=elFSize.value; updateRunningTotal(); });
+    elFType.addEventListener('change',()=>{ state.fountainType=elFType.value; updateRunningTotal(); });
+
+    /* ===== Pricing math ===== */
+    function basePriceFor(barKey,pkg){ const base=BASE_PRICES[pkg]||0; const add=(BAR_META[barKey]?.add)||0; return base+add; }
+    function secondBarPrice(){ if(!state.secondEnabled) return 0; const base=BASE_PRICES[state.secondSize]||0; const disc=SECOND_DISCOUNT[state.secondSize]||0; return Math.max(base-disc,0); }
+    function fountainPrice(){ if(!state.fountainEnabled) return 0; const base=FOUNTAIN_PRICE[state.fountainSize]||0; const add=(state.fountainType==='white'||state.fountainType==='mixed')?50:0; return base+add; }
+    function compute(){
+      const base = (state.pkg && state.mainBar)? basePriceFor(state.mainBar,state.pkg):0;
+      const s2 = secondBarPrice(); const fnt = fountainPrice(); const total = base + s2 + fnt;
+      let dueNow = 0, savings = 0;
+      if (state.pay==='full'){ savings = FULL_FLAT_OFF; dueNow = Math.max(total - FULL_FLAT_OFF, 0); }
+      else { dueNow = Math.round(total * 0.25); }
+      return { base, s2, fnt, total, dueNow, savings };
+    }
+    function updateRunningTotal(){
+      const { total, dueNow } = compute();
+      $$('.small[data-running]').forEach(el=> el.textContent = `Current total: ${fmt(total)} • Due now: ${fmt(dueNow)}`);
+      if (state.step===4) renderSummary();
+    }
+
+    /* ===== Calendar ===== */
+    const calTitle=$('[data-cal-title]'), calGrid=$('[data-cal-grid]'), slotGrid=$('[data-slot-grid]'), slotHint=$('[data-slot-hint]');
+    const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const ymd=d=>d.toISOString().slice(0,10);
+    $('[data-prev]').addEventListener('click',()=>{ state.cal.setMonth(state.cal.getMonth()-1); renderCalendar(); });
+    $('[data-next]').addEventListener('click',()=>{ state.cal.setMonth(state.cal.getMonth()+1); renderCalendar(); });
+
+    function renderCalendar(){
+      calGrid.innerHTML='';
+      DOW.forEach(d=>{ const x=document.createElement('div'); x.className='dow'; x.textContent=d; calGrid.appendChild(x); });
+      const y=state.cal.getFullYear(), m=state.cal.getMonth();
+      const first=new Date(y,m,1), start=new Date(first); start.setDate(1-first.getDay());
+      calTitle.textContent = state.cal.toLocaleString('default',{month:'long',year:'numeric'});
+      for(let i=0;i<42;i++){
+        const day=new Date(start); day.setDate(start.getDate()+i);
+        const isThisMonth = day.getMonth()===m;
+        const isPast = day < new Date(new Date().toDateString());
+        const btn=document.createElement('button'); btn.type='button'; btn.className='day'; if(!isThisMonth||isPast) btn.classList.add('off');
+        btn.textContent=String(day.getDate());
+        btn.addEventListener('click',()=>{
+          if(btn.classList.contains('off')) return;
+          $$('.day.sel').forEach(x=>x.classList.remove('sel'));
+          btn.classList.add('sel');
+          state.dateISO = ymd(day); state.startISO=null;
+          loadSlotsIfDate(); updateControls();
+        });
+        calGrid.appendChild(btn);
+      }
+    }
+
+    async function loadSlotsIfDate(){
+      slotGrid.innerHTML='';
+      if(!state.dateISO || !state.pkg){ slotHint.textContent='Select a date to load available times.'; return; }
+      slotHint.textContent='Loading availability...';
+      try{
+        const qs = new URLSearchParams({ date: state.dateISO, hours: String(state.hours||0) });
+        const r = await fetch((API_BASE||'') + '/api/availability?' + qs.toString());
+        const j = await r.json(); const slots = j.slots || [];
+        if(slots.length===0){ slotHint.textContent='No times available for this date.'; return; }
+        slotHint.textContent='Select a start time:';
+        slots.forEach(s=>{
+          const d=new Date(s.startISO);
+          const btn=document.createElement('button');
+          btn.type='button'; btn.className='slot';
+          btn.textContent=d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+          btn.addEventListener('click',()=>{
+            $$('.slot.sel').forEach(x=>x.classList.remove('sel'));
+            btn.classList.add('sel'); state.startISO=s.startISO; updateControls();
+          });
+          slotGrid.appendChild(btn);
+        });
+      }catch(e){
+        console.error(e); slotHint.textContent='Could not load times. Check API.';
+      }
+    }
+
+    /* ===== Info inputs ===== */
+    $('[data-name]').addEventListener('input',e=>{ state.name=e.target.value.trim(); updateControls(); renderSummary(); });
+    $('[data-email]').addEventListener('input',e=>{ state.email=e.target.value.trim(); updateControls(); renderSummary(); });
+    $('[data-phone]').addEventListener('input',e=>{ state.phone=e.target.value.trim(); renderSummary(); });
+    $('[data-venue]').addEventListener('input',e=>{ state.venue=e.target.value.trim(); updateControls(); renderSummary(); });
+    $$('[data-setup] input[type="radio"]').forEach(r=> r.addEventListener('change',()=>{ if(r.checked){ state.setup=r.value; updateControls(); renderSummary(); }}));
+    $$('[data-power] input[type="radio"]').forEach(r=> r.addEventListener('change',()=>{ if(r.checked){ state.power=r.value; updateControls(); renderSummary(); }}));
+    $('[data-policy]').addEventListener('change',e=>{ state.policy=!!e.target.checked; updateControls(); });
+    $$('input[name="pay"]').forEach(r=> r.addEventListener('change',()=>{ if(r.checked){ state.pay=r.value; updateRunningTotal(); updateControls(); renderSummary(); }}));
+
+    /* ===== Summary (Step 5) ===== */
+    function renderSummary(){
+      const labels={ "50-150-5h":"50–150 (5 hrs)", "150-250-5h":"150–250 (5 hrs)", "250-350-6h":"250–350 (6 hrs)" };
+      const barTitle=(BAR_META[state.mainBar]?.title)||'Bar';
+      const { total, dueNow, savings } = compute();
+
+      // Main badge text
+      $('[data-sum-main]').textContent = `${barTitle}${state.pkg?` • ${labels[state.pkg]}`:''}`;
+
+      // Monetary
+      $('[data-sum-total]').textContent = fmt(total);
+      $('[data-sum-due]').textContent = fmt(dueNow);
+      $('[data-sum-save]').textContent = savings ? `-${fmt(savings)}` : '$0';
+
+      // Date & Contact
+      const niceDate = state.dateISO ? new Date(state.dateISO+'T00:00:00').toLocaleDateString() : '—';
+      $('[data-sum-date]').textContent = niceDate;
+
+      const contact = `Name: ${state.name || '—'}  ·  Email: ${state.email || '—'}`;
+      $('[data-sum-user]').textContent = contact;
+    }
+
+    /* ===== Ready & Pay ===== */
+    function readyToPay(){
+      const emailOK=/.+@.+\..+/.test(state.email);
+      return !!(state.pkg && state.mainBar && state.dateISO && state.startISO &&
+        state.name && emailOK && state.venue && state.setup && state.power && state.policy);
+    }
+
+    async function doPay(){
+      const payBtn = $('[data-pay]');
+      if(!API_BASE){ alert('Backend not configured'); return; }
+      if(!readyToPay()){ alert('Please complete all fields.'); return; }
+
+      const old = payBtn.textContent;
+      payBtn.disabled = true; payBtn.textContent = 'Redirecting…';
+
+      const body = {
+        pkg: state.pkg,
+        mainBar: state.mainBar,
+        payMode: state.pay,
+        secondEnabled: state.secondEnabled,
+        secondBar: state.secondBar,
+        secondSize: state.secondSize,
+        fountainEnabled: state.fountainEnabled,
+        fountainSize: state.fountainSize,
+        fountainType: state.fountainType,
+        dateISO: state.dateISO,
+        startISO: state.startISO,
+        fullName: state.name,
+        email: state.email,
+        phone: state.phone,
+        venue: state.venue,
+        setup: state.setup,
+        power: state.power
+      };
+
+      try{
+        const r = await fetch(API_BASE + '/api/checkout', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify(body)
+        });
+        const j = await r.json().catch(()=>({}));
+        if(!r.ok || !j.url){
+          alert('Checkout failed: ' + (j.detail || j.error || r.status));
+          payBtn.disabled=false; payBtn.textContent=old; return;
+        }
+
+        // Always break out of iframes (Hostinger builder)
+        try{
+          if(window.top && window.top !== window) window.top.location.href = j.url;
+          else window.location.href = j.url;
+        }catch(_){
+          window.open(j.url, "_blank", "noopener,noreferrer");
+        }
+      }catch(e){
+        console.error(e);
+        alert('Network error starting checkout.');
+        payBtn.disabled=false; payBtn.textContent=old;
+      }
+    }
+
+    $('[data-pay]').addEventListener('click', doPay);
+
+    /* ===== Init ===== */
+    go(0); renderCalendar(); updateSecondShownPrice(); updateRunningTotal();
+  })();
+  </script>
+</section>
