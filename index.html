@@ -18,6 +18,9 @@
       --ring:#232b42;
       --success:#34d399;
       --danger:#f87171;
+      --hero-start:#fef3f7;
+      --hero-end:#dbeafe;
+      --hero-ink:#0f172a;
       font-family:'Plus Jakarta Sans',Inter,'Segoe UI',sans-serif;
       color:var(--ink);
       background:var(--bg);
@@ -163,6 +166,34 @@
       border-radius:24px;
       padding:24px;
       box-shadow:0 20px 40px rgba(2,6,23,.75);
+      position:relative;
+      overflow:hidden;
+    }
+
+    .step-hero {
+      background:linear-gradient(130deg,var(--hero-start),var(--hero-end));
+      color:var(--hero-ink);
+      border-radius:24px;
+      padding:18px 22px;
+      margin:-8px -8px 18px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:14px;
+      align-items:flex-end;
+      box-shadow:0 18px 36px rgba(15,23,42,.25);
+    }
+
+    .step-hero .eyebrow { color:#475467; margin:0 0 6px; font-weight:700; }
+    .step-hero h2 { margin:0; color:var(--hero-ink); }
+    .step-note { margin:6px 0 0; color:#475467; font-weight:600; font-size:14px; }
+    .step-hero .running {
+      background:rgba(255,255,255,.9);
+      color:var(--hero-ink);
+      border-radius:999px;
+      padding:10px 18px;
+      font-weight:800;
+      font-size:14px;
+      box-shadow:0 8px 24px rgba(15,23,42,.2);
     }
 
     .card h2 {
@@ -286,6 +317,7 @@
     .calendar-wrap {
       display:grid;
       gap:16px;
+      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
     }
 
     .cal-card {
@@ -412,10 +444,12 @@
     .policy-card label { display:flex; gap:12px; align-items:flex-start; cursor:pointer; }
     .policy-card input { margin-top:4px; }
     .policy-card p { margin:4px 0 0; color:var(--muted); font-size:13px; }
+    .policy-points { margin:8px 0 0 18px; color:var(--muted); font-size:13px; }
+    .policy-points li { margin-bottom:4px; }
 
     .summary-grid {
       display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+      grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
       gap:18px;
       margin-top:18px;
     }
@@ -430,12 +464,12 @@
 
     .panel h3 { margin:0 0 10px; font-size:17px; }
     .summary-list { display:grid; gap:10px; }
-    .summary-row { display:flex; justify-content:space-between; gap:12px; font-size:14px; }
-    .summary-row .label { color:var(--muted); font-weight:600; }
-    .summary-row .value { font-weight:700; text-align:right; }
+    .summary-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; font-size:14px; align-items:flex-start; }
+    .summary-row .label { color:var(--muted); font-weight:600; word-break:break-word; overflow-wrap:anywhere; }
+    .summary-row .value { font-weight:700; text-align:right; word-break:break-word; overflow-wrap:anywhere; }
 
     .addons ul { margin:0; padding-left:18px; }
-    .addons li { margin-bottom:4px; }
+    .addons li { margin-bottom:4px; word-break:break-word; }
 
     .totals { display:grid; gap:8px; }
     .total-main { font-size:24px; font-weight:800; }
@@ -455,6 +489,16 @@
 
     .chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
     .chip { padding:6px 12px; border-radius:999px; border:1px solid var(--ring); font-size:12px; font-weight:700; color:var(--muted); }
+
+    @media (max-width:900px) {
+      .summary-grid { grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
+    }
+
+    @media (max-width:700px) {
+      .summary-grid { grid-template-columns:1fr; }
+      .step-hero { flex-direction:column; align-items:flex-start; }
+      .step-hero .running { width:100%; text-align:center; }
+    }
 
     @media (max-width:640px) {
       .stage { min-height:880px; }
@@ -496,9 +540,14 @@
         <!-- STEP 1 -->
         <div class="slide is-on" data-step="0">
           <div class="card">
-            <p class="eyebrow" data-i18n="step1Eyebrow">Step 1</p>
-            <h2 data-i18n="step1Title">Choose your main bar</h2>
-            <div class="running" data-running>Current total: $0 • Due now: $0</div>
+            <div class="step-hero">
+              <div>
+                <p class="eyebrow" data-i18n="step1Eyebrow">Step 1</p>
+                <h2 data-i18n="step1Title">Choose your main bar</h2>
+                <p class="step-note" data-i18n="step1Note">Pick your hero bar to start.</p>
+              </div>
+              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+            </div>
 
             <div class="grid-bars" data-choices="bar" aria-label="Pick your main bar">
               <label class="choice" data-bar="pancake">
@@ -547,9 +596,14 @@
         <!-- STEP 2 -->
         <div class="slide" data-step="1">
           <div class="card">
-            <p class="eyebrow" data-i18n="step2Eyebrow">Step 2</p>
-            <h2 data-i18n="step2Title">Choose a package</h2>
-            <div class="running" data-running>Current total: $0 • Due now: $0</div>
+            <div class="step-hero">
+              <div>
+                <p class="eyebrow" data-i18n="step2Eyebrow">Step 2</p>
+                <h2 data-i18n="step2Title">Choose a package</h2>
+                <p class="step-note" data-i18n="step2Note">Match your guest count & hours.</p>
+              </div>
+              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+            </div>
             <div class="add-on-list" data-choices="pkg">
               <label class="choice">
                 <input type="radio" name="pkg" value="50-150-5h" data-hours="2">
@@ -573,9 +627,14 @@
         <!-- STEP 3 -->
         <div class="slide" data-step="2">
           <div class="card">
-            <p class="eyebrow" data-i18n="step3Eyebrow">Step 3</p>
-            <h2 data-i18n="step3Title">Optional add-ons</h2>
-            <div class="running" data-running>Current total: $0 • Due now: $0</div>
+            <div class="step-hero">
+              <div>
+                <p class="eyebrow" data-i18n="step3Eyebrow">Step 3</p>
+                <h2 data-i18n="step3Title">Optional add-ons</h2>
+                <p class="step-note" data-i18n="step3Note">Sweeten the experience with extras.</p>
+              </div>
+              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+            </div>
 
             <div class="add-on-list">
               <div class="add-on-row">
@@ -650,9 +709,14 @@
         <!-- STEP 4 -->
         <div class="slide" data-step="3">
           <div class="card">
-            <p class="eyebrow" data-i18n="step4Eyebrow">Step 4</p>
-            <h2 data-i18n="step4Title">Pick date & time</h2>
-            <p class="eyebrow" data-i18n="step4Note">Calendar blocks 1h setup + live service + 1h cleanup.</p>
+            <div class="step-hero">
+              <div>
+                <p class="eyebrow" data-i18n="step4Eyebrow">Step 4</p>
+                <h2 data-i18n="step4Title">Pick date & time</h2>
+                <p class="step-note" data-i18n="step4Note">Calendar blocks 1h setup + live service + 1h cleanup.</p>
+              </div>
+              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+            </div>
 
             <div class="calendar-wrap">
               <div class="cal-card">
@@ -674,9 +738,14 @@
         <!-- STEP 5 -->
         <div class="slide" data-step="4">
           <div class="card">
-            <p class="eyebrow" data-i18n="step5Eyebrow">Step 5</p>
-            <h2 data-i18n="step5Title">Your info & pay</h2>
-            <p class="eyebrow" data-i18n="step5Note">We’ll only use this info for your booking and calendar invite.</p>
+            <div class="step-hero">
+              <div>
+                <p class="eyebrow" data-i18n="step5Eyebrow">Step 5</p>
+                <h2 data-i18n="step5Title">Your info & pay</h2>
+                <p class="step-note" data-i18n="step5Note">We’ll only use this info for your booking and calendar invite.</p>
+              </div>
+              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+            </div>
 
             <div class="form-grid">
               <div class="field">
@@ -724,6 +793,11 @@
                 <div>
                   <strong data-i18n="policy_label">I agree to Manna’s booking policy.</strong>
                   <p data-i18n="policy_copy">Deposit is non-refundable. Date changes require 14 days notice. Balance due 48h before event.</p>
+                  <ul class="policy-points">
+                    <li data-i18n="policy_point1">Deposit is non-refundable.</li>
+                    <li data-i18n="policy_point2">Change dates with 14 days notice.</li>
+                    <li data-i18n="policy_point3">Pay remaining balance 48h before.</li>
+                  </ul>
                 </div>
               </label>
             </div>
@@ -734,9 +808,14 @@
         <!-- STEP 6 -->
         <div class="slide" data-step="5">
           <div class="card">
-            <p class="eyebrow" data-i18n="step6Eyebrow">Step 6</p>
-            <h2 data-i18n="step6Title">Review & total</h2>
-            <p class="eyebrow" data-i18n="step6Note">Confirm everything below before continuing to Stripe Checkout.</p>
+            <div class="step-hero">
+              <div>
+                <p class="eyebrow" data-i18n="step6Eyebrow">Step 6</p>
+                <h2 data-i18n="step6Title">Review & total</h2>
+                <p class="step-note" data-i18n="step6Note">Confirm everything below before continuing to Stripe Checkout.</p>
+              </div>
+              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+            </div>
 
             <div class="summary-grid">
               <div class="panel">
@@ -805,29 +884,32 @@
       const translations = {
         en: {
           widgetTitle: 'Manna Snack Bars • Booking',
-          widgetSubtitle: 'Select your snack experience, pick a date, and pay securely.',
+          widgetSubtitle: 'Plan your snack experience, calendar, and payment in one cozy flow.',
           actionBack: 'Back',
           actionNext: 'Next',
           actionReview: 'Review',
           actionPay: 'Pay now',
-          actionPayNow: 'Confirm & pay',
+          actionPayNow: 'Confirm & pay 💳',
           errorIncomplete: 'Please complete all required fields.',
-          runningTotal: 'Current total: {total} • Due now: {due}',
+          runningTotal: '💸 Current total: {total} • Due now: {due}',
           step1Eyebrow: 'Step 1',
-          step1Title: 'Choose your main bar',
+          step1Title: '🍫 Choose your main bar',
+          step1Note: 'Mix & match your favorite flavors.',
           step2Eyebrow: 'Step 2',
-          step2Title: 'Choose a package',
+          step2Title: '🎉 Choose a package',
+          step2Note: 'Pick the guest range that fits best.',
           step3Eyebrow: 'Step 3',
-          step3Title: 'Optional add-ons',
+          step3Title: '✨ Extras & add-ons',
+          step3Note: 'Add wow moments for your guests.',
           step4Eyebrow: 'Step 4',
-          step4Title: 'Pick date & time',
-          step4Note: 'Calendar blocks 1h setup + live service + 1h cleanup.',
+          step4Title: '📅 Pick date & time',
+          step4Note: '🧹 We block 1h for setup + cleanup around your service window.',
           step5Eyebrow: 'Step 5',
-          step5Title: 'Your info & pay',
-          step5Note: 'We’ll only use this info for your booking and calendar invite.',
+          step5Title: '📝 Your info & pay',
+          step5Note: '📩 Only used for confirmations & calendar invites.',
           step6Eyebrow: 'Step 6',
-          step6Title: 'Review & total',
-          step6Note: 'Confirm everything below before continuing to Stripe Checkout.',
+          step6Title: '✅ Review & total',
+          step6Note: '💳 Double-check everything before heading to Stripe (promo codes live there).',
           bar_label_standard: 'Standard',
           bar_label_premium: 'Premium +$50',
           bar_pancake_title: 'Mini Pancake',
@@ -857,13 +939,13 @@
           pkg_large_title: '250–350 guests',
           pkg_large_hours: '3 hrs live',
           pkg_large_desc: 'Extended service and staffing for high-volume celebrations.',
-          addon_second_title: 'Add a second standard bar',
-          addon_second_desc: 'Discounted pricing by guest count.',
+          addon_second_title: '🧑‍🤝‍🧑 Add a second standard bar',
+          addon_second_desc: 'Serve two bars at once with special pricing.',
           addon_toggle_label: 'Include this add-on',
           addon_second_bar_label: 'Which bar?',
           addon_second_size_label: 'Guest count',
-          addon_fountain_title: 'Chocolate fountain table',
-          addon_fountain_desc: '50/100/150 guests, premium dippings.',
+          addon_fountain_title: '🍫 Chocolate fountain table',
+          addon_fountain_desc: '50/100/150 guests with premium dippings.',
           addon_fountain_size: 'Fountain size',
           addon_fountain_type: 'Chocolate type',
           addon_fountain_50: '50 people — $350',
@@ -872,11 +954,11 @@
           addon_fountain_dark: 'Dark / Milk',
           addon_fountain_white: 'White (+$50)',
           addon_fountain_mixed: 'Mixed (+$50)',
-          slot_hint_pick: 'Select a date to load available times.',
-          slot_hint_loading: 'Loading availability...',
-          slot_hint_empty: 'No times available for this date.',
-          slot_hint_ready: 'Select a start time:',
-          slot_hint_error: 'Could not load times. Check API.',
+          slot_hint_pick: '📆 Select a date to load available times.',
+          slot_hint_loading: '⏳ Loading availability...',
+          slot_hint_empty: '😅 No time slots are left for this date.',
+          slot_hint_ready: '🕒 Choose a start time:',
+          slot_hint_error: '⚠️ We couldn’t load availability. Please try again.',
           label_fullName: 'Full name',
           label_email: 'Email',
           label_phone: 'Phone',
@@ -894,57 +976,63 @@
           power_need: 'Need generator or extension',
           pay_full: 'Pay in full (save $20)',
           pay_deposit: '25% deposit',
-          policy_label: 'I agree to Manna’s booking policy.',
-          policy_copy: 'Deposit is non-refundable. Date changes require 14 days notice. Balance due 48h before event.',
-          financing_note: 'For totals over $600, flexible financing options may be available on the Stripe payment page.',
-          summary_booking: 'Booking',
-          summary_addons: 'Add-ons',
-          summary_payment: 'Payment',
+          policy_label: '✅ I agree to Manna’s booking policy.',
+          policy_copy: 'Quick reminder before we block your crew:',
+          policy_point1: 'Deposit is non-refundable.',
+          policy_point2: 'Date changes need 14 days notice.',
+          policy_point3: 'Remaining balance is due 48h before the event.',
+          financing_note: '💡 For totals over $600 you may see flexible financing on the Stripe payment page.',
+          summary_booking: '📋 Reservation',
+          summary_addons: '🍭 Extras',
+          summary_payment: '💳 Payment',
           summary_mainBar: 'Main bar',
           summary_secondBar: 'Second bar',
           summary_fountain: 'Fountain',
           summary_package: 'Package',
           summary_date: 'Date',
           summary_time: 'Start time',
-          summary_timezone: 'Timezone',
+          summary_timezone: '🕒 Timezone',
           timezone_label: 'Pacific Time (Los Angeles)',
           summary_location: 'Location',
           summary_contact: 'Contact',
           summary_payMode: 'Mode',
           summary_total: 'Total',
-          summary_discount: 'Pay-in-full discount',
+          summary_discount: '💝 Pay-in-full discount',
           summary_dueNow: 'Due today',
           summary_remaining: 'Remaining balance',
           summary_no_addons: 'No add-ons selected',
           summary_second_none: 'Not added',
           summary_fountain_none: 'Not added',
-          promo_note: 'You’ll be able to enter a promo code on the Stripe payment page.'
+          promo_note: '🎟️ You’ll be able to enter a promo code on the Stripe payment page.'
         },
         es: {
           widgetTitle: 'Manna Snack Bars • Reservación',
-          widgetSubtitle: 'Elige tu barra, selecciona fecha y paga con seguridad.',
+          widgetSubtitle: 'Planea tu barra, calendario y pago en minutos.',
           actionBack: 'Atrás',
           actionNext: 'Siguiente',
           actionReview: 'Revisar',
           actionPay: 'Pagar ahora',
-          actionPayNow: 'Confirmar y pagar',
+          actionPayNow: 'Confirmar y pagar 💳',
           errorIncomplete: 'Completa todos los campos obligatorios.',
-          runningTotal: 'Total actual: {total} • Pagar hoy: {due}',
+          runningTotal: '💸 Total actual: {total} • Pagar hoy: {due}',
           step1Eyebrow: 'Paso 1',
-          step1Title: 'Elige tu barra principal',
+          step1Title: '🍫 Elige tu barra principal',
+          step1Note: 'Combina tus sabores favoritos.',
           step2Eyebrow: 'Paso 2',
-          step2Title: 'Elige un paquete',
+          step2Title: '🎉 Elige un paquete',
+          step2Note: 'Selecciona el rango ideal de invitados.',
           step3Eyebrow: 'Paso 3',
-          step3Title: 'Extras opcionales',
+          step3Title: '✨ Extras opcionales',
+          step3Note: 'Agrega extras para sorprender a tus invitados.',
           step4Eyebrow: 'Paso 4',
-          step4Title: 'Selecciona fecha y hora',
-          step4Note: 'El calendario bloquea 1h montaje + servicio + 1h limpieza.',
+          step4Title: '📅 Selecciona fecha y hora',
+          step4Note: '🧹 Bloqueamos 1h para montaje y 1h para desmontaje alrededor del servicio.',
           step5Eyebrow: 'Paso 5',
-          step5Title: 'Tus datos y pago',
-          step5Note: 'Usaremos esta info solo para tu reservación e invitación de calendario.',
+          step5Title: '📝 Tus datos y pago',
+          step5Note: '📩 Usaremos esta info solo para confirmaciones e invitaciones.',
           step6Eyebrow: 'Paso 6',
-          step6Title: 'Revisión y total',
-          step6Note: 'Confirma todo antes de continuar a Stripe Checkout.',
+          step6Title: '✅ Revisión y total',
+          step6Note: '💳 Revisa todo antes de ir a Stripe (ahí podrás ingresar cupones).',
           bar_label_standard: 'Estándar',
           bar_label_premium: 'Premium +$50',
           bar_pancake_title: 'Mini Pancake',
@@ -974,12 +1062,12 @@
           pkg_large_title: '250–350 invitados',
           pkg_large_hours: '3 hrs en vivo',
           pkg_large_desc: 'Servicio extendido y staff extra para grandes celebraciones.',
-          addon_second_title: 'Agrega una segunda barra estándar',
-          addon_second_desc: 'Precio con descuento según invitados.',
+          addon_second_title: '🧑‍🤝‍🧑 Agrega una segunda barra estándar',
+          addon_second_desc: 'Dos barras al mismo tiempo con precio especial.',
           addon_toggle_label: 'Agregar este extra',
           addon_second_bar_label: '¿Qué barra?',
           addon_second_size_label: 'Número de invitados',
-          addon_fountain_title: 'Mesa de fuente de chocolate',
+          addon_fountain_title: '🍫 Mesa de fuente de chocolate',
           addon_fountain_desc: '50/100/150 invitados con dippings premium.',
           addon_fountain_size: 'Tamaño de la fuente',
           addon_fountain_type: 'Tipo de chocolate',
@@ -989,11 +1077,11 @@
           addon_fountain_dark: 'Oscuro / Leche',
           addon_fountain_white: 'Blanco (+$50)',
           addon_fountain_mixed: 'Mixto (+$50)',
-          slot_hint_pick: 'Selecciona una fecha para ver horarios.',
-          slot_hint_loading: 'Cargando disponibilidad...',
-          slot_hint_empty: 'No hay horarios disponibles en esta fecha.',
-          slot_hint_ready: 'Elige una hora de inicio:',
-          slot_hint_error: 'No pudimos cargar horarios. Revisa el API.',
+          slot_hint_pick: '📆 Selecciona una fecha para ver horarios.',
+          slot_hint_loading: '⏳ Cargando disponibilidad...',
+          slot_hint_empty: '😅 No hay horarios disponibles en esta fecha.',
+          slot_hint_ready: '🕒 Elige una hora de inicio:',
+          slot_hint_error: '⚠️ No pudimos cargar horarios. Intenta de nuevo.',
           label_fullName: 'Nombre completo',
           label_email: 'Correo',
           label_phone: 'Teléfono',
@@ -1011,31 +1099,34 @@
           power_need: 'Necesitamos planta o extensión',
           pay_full: 'Pago total (ahorra $20)',
           pay_deposit: '25% de anticipo',
-          policy_label: 'Acepto la política de reservación de Manna.',
-          policy_copy: 'El depósito no es reembolsable. Cambios de fecha con 14 días. Saldo 48h antes del evento.',
-          financing_note: 'En totales mayores a $600 podrás ver opciones de financiamiento en Stripe.',
-          summary_booking: 'Reservación',
-          summary_addons: 'Extras',
-          summary_payment: 'Pago',
+          policy_label: '✅ Acepto la política de reservación de Manna.',
+          policy_copy: 'Antes de apartar tu equipo, toma en cuenta:',
+          policy_point1: 'El depósito no es reembolsable.',
+          policy_point2: 'Cambios de fecha con 14 días de anticipación.',
+          policy_point3: 'El saldo se liquida 48h antes del evento.',
+          financing_note: '💡 En totales mayores a $600 podrás ver opciones de financiamiento en Stripe.',
+          summary_booking: '📋 Reservación',
+          summary_addons: '🍭 Extras',
+          summary_payment: '💳 Pago',
           summary_mainBar: 'Barra principal',
           summary_secondBar: 'Segunda barra',
           summary_fountain: 'Fuente',
           summary_package: 'Paquete',
           summary_date: 'Fecha',
           summary_time: 'Hora de inicio',
-          summary_timezone: 'Zona horaria',
+          summary_timezone: '🕒 Zona horaria',
           timezone_label: 'Hora del Pacífico (Los Ángeles)',
           summary_location: 'Ubicación',
           summary_contact: 'Contacto',
           summary_payMode: 'Modo',
           summary_total: 'Total',
-          summary_discount: 'Descuento por pago total',
+          summary_discount: '💝 Descuento por pago total',
           summary_dueNow: 'Pagar hoy',
           summary_remaining: 'Saldo pendiente',
           summary_no_addons: 'Sin extras seleccionados',
           summary_second_none: 'No agregado',
           summary_fountain_none: 'No agregado',
-          promo_note: 'Podrás ingresar un código promocional en la página de Stripe.'
+          promo_note: '🎟️ Podrás ingresar un código promocional en la página de Stripe.'
         }
       };
 
@@ -1383,6 +1474,7 @@
           pkg: state.pkg,
           mainBar: state.mainBar,
           payMode: state.pay,
+          lang: state.lang,
           secondEnabled: state.secondEnabled,
           secondBar: state.secondBar,
           secondSize: state.secondSize,

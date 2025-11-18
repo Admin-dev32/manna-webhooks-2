@@ -123,6 +123,7 @@ export default async function handler(req, res){
         pkg: pb.pkg,
         mainBar: pb.mainBar,
         payMode: pb.payMode,
+        lang: pb.lang || 'en',
         secondEnabled: String(!!pb.secondEnabled),
         secondBar: pb.secondBar || '',
         secondSize: pb.secondSize || '',
