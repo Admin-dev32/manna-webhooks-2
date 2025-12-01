@@ -4,6 +4,18 @@
 
 export const config = { runtime: "nodejs" };
 
+const REQUIRED_FIELDS = [
+  "pkg",       // rango de invitados / paquete
+  "mainBar",   // tipo de barra principal
+  "payMode",   // "deposit" o "full"
+  "fullName",  // nombre completo del cliente
+  "email",     // correo del cliente
+  "dateISO",   // fecha del evento (YYYY-MM-DD)
+  "startISO",  // hora de inicio en ISO (ej. 2026-03-29T20:30:00-08:00)
+  "venue",     // ciudad / dirección del evento
+  "guests"     // número aproximado de invitados
+];
+
 export default async function handler(req, res) {
   // Accept only POST requests from ChatGPT
   if (req.method !== "POST") {
@@ -11,21 +23,42 @@ export default async function handler(req, res) {
   }
 
   try {
-    const body = req.body || {};
+    // Vercel normalmente ya parsea JSON; por si acaso, soportamos string también
+    const rawBody = req.body || {};
+    const body =
+      typeof rawBody === "string"
+        ? JSON.parse(rawBody || "{}")
+        : rawBody;
 
-    // Minimal validation
-    if (!body.pkg || !body.mainBar || !body.payMode) {
+    // 🔒 Validación estricta de campos obligatorios
+    const missing = REQUIRED_FIELDS.filter((field) => {
+      const value = body[field];
+      // Consideramos vacío: undefined, null, "", 0 invitados, etc.
+      return (
+        value === undefined ||
+        value === null ||
+        (typeof value === "string" && value.trim() === "") ||
+        (field === "guests" && (!Number.isFinite(Number(value)) || Number(value) <= 0))
+      );
+    });
+
+    if (missing.length > 0) {
       return res.status(400).json({
-        error: "Missing required fields: pkg, mainBar, payMode"
+        success: false,
+        error: "Missing required fields",
+        missing
       });
     }
 
     // Forward the same payload to your real /api/checkout
-    const response = await fetch("https://manna-webhooks-2.vercel.app/api/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
+    const response = await fetch(
+      "https://manna-webhooks-2.vercel.app/api/checkout",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      }
+    );
 
     // If checkout returns a URL, relay it back to ChatGPT
     if (response.ok) {
