@@ -1,64 +1,73 @@
 export default async function handler(req, res) {
   try {
-    const url = "https://manna-webhooks-2.vercel.app"; // fetch root, not /public
+    const url = "https://manna-webhooks-2.vercel.app/";
     const html = await fetch(url).then(r => r.text());
 
-    // Helper to extract JavaScript object definitions from HTML
-    const extractObject = (name) => {
-      const regex = new RegExp(`const\\s+${name}\\s*=\\s*({[\\s\\S]*?})[;\\n]`);
+    /* --- 1. Safe extractors for constants --- */
+    const extractObj = (key) => {
+      const regex = new RegExp(`const\\s+${key}\\s*=\\s*({[\\s\\S]*?})[;\\n]`);
       const match = html.match(regex);
       if (!match) return {};
-      try {
-        return eval(`(${match[1]})`);
-      } catch (err) {
-        console.warn(`Failed to parse ${name}`, err);
-        return {};
-      }
+      try { return eval("(" + match[1] + ")"); } catch { return {}; }
     };
-
-    // Helper to extract numeric constants
-    const extractNumber = (name) => {
-      const regex = new RegExp(`const\\s+${name}\\s*=\\s*(\\d+)`);
+    const extractNum = (key) => {
+      const regex = new RegExp(`const\\s+${key}\\s*=\\s*(\\d+)`);
       const match = html.match(regex);
       return match ? Number(match[1]) : 0;
     };
 
-    // 🔍 Extract JavaScript constants directly from your index.html
-    const base_prices = extractObject("BASE_PRICES");
-    const bar_meta = extractObject("BAR_META");
-    const second_discount = extractObject("SECOND_DISCOUNT");
-    const fountain_price = extractObject("FOUNTAIN_PRICE");
-    const full_payment_discount = extractNumber("FULL_FLAT_OFF");
+    /* --- 2. Extract JS constants --- */
+    const base_prices = extractObj("BASE_PRICES");
+    const bar_meta = extractObj("BAR_META");
+    const second_discount = extractObj("SECOND_DISCOUNT");
+    const fountain_price = extractObj("FOUNTAIN_PRICE");
+    const full_payment_discount = extractNum("FULL_FLAT_OFF");
 
-    // Fallback: Try parsing inside <script> tags too (for bundled builds)
-    if (Object.keys(base_prices).length === 0) {
-      const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
-      for (const s of scripts) {
-        const text = s[1];
-        if (!text) continue;
-        if (!Object.keys(base_prices).length && text.includes("BASE_PRICES"))
-          try { Object.assign(base_prices, eval("(" + text.match(/BASE_PRICES\s*=\s*({[\s\S]*?})[;,\n]/)[1] + ")")); } catch {}
-        if (!Object.keys(bar_meta).length && text.includes("BAR_META"))
-          try { Object.assign(bar_meta, eval("(" + text.match(/BAR_META\s*=\s*({[\s\S]*?})[;,\n]/)[1] + ")")); } catch {}
-        if (!Object.keys(second_discount).length && text.includes("SECOND_DISCOUNT"))
-          try { Object.assign(second_discount, eval("(" + text.match(/SECOND_DISCOUNT\s*=\s*({[\s\S]*?})[;,\n]/)[1] + ")")); } catch {}
-        if (!Object.keys(fountain_price).length && text.includes("FOUNTAIN_PRICE"))
-          try { Object.assign(fountain_price, eval("(" + text.match(/FOUNTAIN_PRICE\s*=\s*({[\s\S]*?})[;,\n]/)[1] + ")")); } catch {}
-      }
-    }
+    /* --- 3. Parse HTML bar blocks for human text --- */
+    const bars = Array.from(
+      html.matchAll(/<label class="choice bar-card"[^>]*data-bar="([^"]+)"[^>]*>([\s\S]*?)<\/label>/g)
+    ).map(([_, id, inner]) => {
+      const title = (inner.match(/<div class="title">(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
+      const tag = (inner.match(/<div class="tag"[^>]*>(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
+      const desc = (inner.match(/<div class="desc">(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
+      const details = (inner.match(/<div class="details">(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
+      const meta = bar_meta?.[id] || {};
+      return {
+        id,
+        title: title || meta.title || '',
+        tag,
+        desc: desc || meta.desc || '',
+        details: details || meta.details || '',
+        add: meta.add || 0,
+        base_price: base_prices || {}
+      };
+    });
 
-    const result = {
+    /* --- 4. Parse add-on info --- */
+    const addons = Array.from(
+      html.matchAll(/<div class="add-on-row">([\s\S]*?)<\/div>\s*<\/div>/g)
+    ).map(([_, block]) => {
+      const title = (block.match(/<div class="title"[^>]*>(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
+      const copy = (block.match(/<div class="copy"[^>]*>(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
+      const price = (block.match(/<div class="price"[^>]*>(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
+      return { title, copy, price };
+    });
+
+    /* --- 5. Combine everything --- */
+    const data = {
       source: url,
       base_prices,
       bar_meta,
       second_discount,
       fountain_price,
       full_payment_discount,
+      bars,
+      addons
     };
 
-    res.status(200).json(result);
+    res.status(200).json(data);
   } catch (err) {
-    console.error("Error extracting data:", err);
-    res.status(500).json({ error: "Failed to extract prices from live index.html" });
+    console.error("Error reading pricing data:", err);
+    res.status(500).json({ error: "Failed to extract pricing information from live HTML" });
   }
 }
