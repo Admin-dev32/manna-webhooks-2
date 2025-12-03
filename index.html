@@ -755,7 +755,7 @@
                 <h2 data-i18n="step1Title">Choose your main bar</h2>
                 <p class="step-note" data-i18n="step1Note">Pick your hero bar to start.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
 
             <div class="which-bars" data-choices="bar" aria-label="Pick your main bar">
@@ -826,30 +826,22 @@
                 <h2 data-i18n="step2Title">Choose a package</h2>
                 <p class="step-note" data-i18n="step2Note">Match your guest count & hours.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
             <div class="add-on-list" data-choices="pkg">
-              <label class="choice">
-                <input type="radio" name="pkg" value="50-150-5h" data-hours="2">
+              <div class="choice">
                 <div class="choice-body">
-                  <div class="label"><span data-i18n="pkg_small_title">50–150 guests</span><span class="badge" data-i18n="pkg_small_hours">2 hrs live</span></div>
+                  <div class="label"><span data-i18n="pkg_small_title">50–150 guests</span><span class="badge" data-hours-badge>2 hrs live</span></div>
                   <div class="desc" data-i18n="pkg_small_desc">Perfect for birthdays, showers, and intimate events.</div>
+                  <div class="guest-range" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px;">
+                    <input type="range" min="30" max="350" step="10" value="80" data-guest-range style="flex:1 1 220px;">
+                    <div class="input" style="flex:0 0 120px;">
+                      <input type="number" min="30" max="350" step="10" value="80" data-guest-input>
+                    </div>
+                  </div>
+                  <p class="desc" data-per-guest>Price per guest: $0.00</p>
                 </div>
-              </label>
-              <label class="choice">
-                <input type="radio" name="pkg" value="150-250-5h" data-hours="2.5">
-                <div class="choice-body">
-                  <div class="label"><span data-i18n="pkg_medium_title">150–250 guests</span><span class="badge" data-i18n="pkg_medium_hours">2.5 hrs live</span></div>
-                  <div class="desc" data-i18n="pkg_medium_desc">Our most popular package for weddings & corporate events.</div>
-                </div>
-              </label>
-              <label class="choice">
-                <input type="radio" name="pkg" value="250-350-6h" data-hours="3">
-                <div class="choice-body">
-                  <div class="label"><span data-i18n="pkg_large_title">250–350 guests</span><span class="badge" data-i18n="pkg_large_hours">3 hrs live</span></div>
-                  <div class="desc" data-i18n="pkg_large_desc">Extended service and staffing for high-volume celebrations.</div>
-                </div>
-              </label>
+              </div>
             </div>
           </div>
         </div>
@@ -863,7 +855,7 @@
                 <h2 data-i18n="step3Title">Optional add-ons</h2>
                 <p class="step-note" data-i18n="step3Note">Sweeten the experience with extras.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
 
             <div class="add-on-list">
@@ -945,7 +937,7 @@
                 <h2 data-i18n="step4Title">Pick date & time</h2>
                 <p class="step-note" data-i18n="step4Note">Calendar blocks 1h setup + live service + 1h cleanup.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
 
             <div class="calendar-wrap">
@@ -974,7 +966,7 @@
                 <h2 data-i18n="step5Title">Your info & pay</h2>
                 <p class="step-note" data-i18n="step5Note">We’ll only use this info for your booking and calendar invite.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
 
             <div class="form-grid">
@@ -1047,7 +1039,7 @@
                 <h2 data-i18n="step6Title">Review & total</h2>
                 <p class="step-note" data-i18n="step6Note">Confirm everything below before continuing to Stripe Checkout.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
 
             <div class="summary-grid">
@@ -1102,16 +1094,14 @@
       const TOTAL_STEPS = 6;
       const localeMap = { en: 'en-US', es: 'es-MX' };
 
-      const BASE_PRICES = { "50-150-5h": 550, "150-250-5h": 700, "250-350-6h": 900 };
+      const TAX_RATE = 1.0825;
       const BAR_META = {
         pancake: { title: '🥞 Mini Pancake', add: 0 },
         esquites: { title: '🌽 Esquites', add: 0 },
         maruchan: { title: '🍜 Maruchan', add: 0 },
-        tostiloco: { title: '🌶️ Tostiloco (Premium +$50)', add: 50 },
+        tostiloco: { title: '🌶️ Tostiloco (Premium)', add: 0 },
         snack: { title: '🍭 Manna Snack Bar — “La Clásica”', add: 0 }
       };
-      const SECOND_DISCOUNT = { "50-150-5h": 50, "150-250-5h": 75, "250-350-6h": 100 };
-      const FOUNTAIN_PRICE = { "50": 350, "100": 450, "150": 550 };
       const FULL_FLAT_OFF = 20;
 
       const translations = {
@@ -1124,7 +1114,8 @@
           actionPay: 'Pay now',
           actionPayNow: 'Confirm & pay 💳',
           errorIncomplete: 'Please complete all required fields.',
-          runningTotal: '💸 Current total: {total} • Due now: {due}',
+          runningTotal: 'Total {total} (Tax included)',
+          perGuest: 'Price per guest: {price}',
           step1Eyebrow: 'Step 1',
           step1Title: '🍫 Choose your main bar',
           step1Note: 'Mix & match your favorite flavors.',
@@ -1248,7 +1239,8 @@
           actionPay: 'Pagar ahora',
           actionPayNow: 'Confirmar y pagar 💳',
           errorIncomplete: 'Completa todos los campos obligatorios.',
-          runningTotal: '💸 Total actual: {total} • Pagar hoy: {due}',
+          runningTotal: 'Total {total} (Impuestos incluidos)',
+          perGuest: 'Precio por invitado: {price}',
           step1Eyebrow: 'Paso 1',
           step1Title: '🍫 Elige tu barra principal',
           step1Note: 'Combina tus sabores favoritos.',
@@ -1371,8 +1363,8 @@
       const state = {
         step: 0,
         mainBar: '',
-        pkg: '',
-        hours: 0,
+        guests: 80,
+        hours: 2,
         secondEnabled: false,
         secondBar: 'pancake',
         secondSize: '50-150-5h',
@@ -1405,6 +1397,7 @@
         $$('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
         $$('[data-lang]').forEach(btn => btn.classList.toggle('is-active', btn.dataset.lang === state.lang));
         setNextLabels();
+        updateHoursBadge();
         updateSecondShownPrice();
         updateRunningTotal();
         renderCalendar();
@@ -1436,7 +1429,7 @@
 
       function readyToPay(){
         const emailOK = /.+@.+\..+/.test(state.email);
-        return !!(state.pkg && state.mainBar && state.dateISO && state.startISO && state.name && emailOK && state.venue && state.setup && state.power && state.policy);
+        return !!(state.guests && state.mainBar && state.dateISO && state.startISO && state.name && emailOK && state.venue && state.setup && state.power && state.policy);
       }
 
       function infoComplete(){
@@ -1446,7 +1439,7 @@
 
       function canNext(){
         if (state.step === 0) return !!state.mainBar;
-        if (state.step === 1) return !!state.pkg;
+        if (state.step === 1) return !!state.guests;
         if (state.step === 2) return true;
         if (state.step === 3) return !!(state.dateISO && state.startISO);
         if (state.step === 4) return infoComplete();
@@ -1501,25 +1494,52 @@
         });
       });
 
-      $$('[data-choices="pkg"] input[name="pkg"]').forEach(inp => {
-        inp.addEventListener('change', () => {
-          state.pkg = inp.value;
-          state.hours = parseFloat(inp.dataset.hours || '0') || 0;
-          updateSecondShownPrice();
-          updateRunningTotal();
-          renderCalendar();
-          loadSlotsIfDate();
-          updateControls();
-          renderSummary();
-        });
-        const lbl = inp.closest('label');
-        lbl.addEventListener('click', () => {
-          if (!inp.checked) {
-            inp.checked = true;
-            inp.dispatchEvent(new Event('change',{ bubbles:true }));
-          }
-        });
-      });
+      const guestRangeInput = $('[data-guest-range]');
+      const guestNumberInput = $('[data-guest-input]');
+      const hoursBadge = $('[data-hours-badge]');
+
+      function clampGuests(val){
+        const num = Number(val) || 0;
+        const clamped = Math.min(350, Math.max(30, num));
+        return Math.round(clamped / 10) * 10;
+      }
+
+      function hoursFromGuests(g){
+        if (g <= 150) return 2;
+        if (g <= 250) return 2.5;
+        return 3;
+      }
+
+      function hoursLabel(h){
+        if (h <= 2) return t('pkg_small_hours');
+        if (h <= 2.5) return t('pkg_medium_hours');
+        return t('pkg_large_hours');
+      }
+
+      function updateHoursBadge(){
+        if (hoursBadge) hoursBadge.textContent = hoursLabel(state.hours);
+      }
+
+      function syncGuests(val){
+        const g = clampGuests(val);
+        state.guests = g;
+        state.hours = hoursFromGuests(g);
+        if (guestRangeInput && guestRangeInput.value !== String(g)) guestRangeInput.value = g;
+        if (guestNumberInput && guestNumberInput.value !== String(g)) guestNumberInput.value = g;
+        updateHoursBadge();
+        updateSecondShownPrice();
+        updateRunningTotal();
+        renderSummary();
+        renderCalendar();
+        loadSlotsIfDate();
+        updateControls();
+      }
+
+      if (guestRangeInput) guestRangeInput.addEventListener('input', e => syncGuests(e.target.value));
+      if (guestNumberInput){
+        guestNumberInput.addEventListener('input', e => syncGuests(e.target.value));
+        guestNumberInput.addEventListener('blur', e => syncGuests(e.target.value));
+      }
 
       const elSecond=$('[data-second]'), secondWrap=$('[data-second-wrap]');
       const elSecondBar=$('[data-second-bar]'), elSecondSize=$('[data-second-size]'), elSecondPrice=$('[data-second-price]');
@@ -1534,9 +1554,52 @@
         return '';
       }
 
+      function roundToNearest5(n){ return Math.round((n || 0) / 5) * 5; }
+      function calculateDynamicTotal(guests, barType='standard'){
+        const g = clampGuests(guests || state.guests || 0);
+        const labor = g <= 100 ? 75 : g <= 250 ? 150 : 200;
+        const toppings = g <= 150 ? 100 : g <= 300 ? 150 : 200;
+        const gas = 20;
+        const profit = g <= 50 ? 250 : g <= 100 ? 200 : 150;
+
+        let subtotal = labor + toppings + gas + profit;
+        if (barType === 'tostiloco'){
+          subtotal += (g / 100) * 50;
+        }
+
+        const totalWithTax = subtotal * TAX_RATE;
+        const total = roundToNearest5(totalWithTax);
+        const perGuest = total / g;
+
+        return { total, perGuest };
+      }
+
+      function mainBarCalc(){
+        if (!state.mainBar || !state.guests) return { total: 0, perGuest: 0 };
+        const type = state.mainBar === 'tostiloco' ? 'tostiloco' : 'standard';
+        return calculateDynamicTotal(state.guests, type);
+      }
+
+      function mainBarPrice(){
+        return mainBarCalc().total;
+      }
+
+      function secondPrice(){
+        if(!state.secondEnabled) return 0;
+        const mainTotal = mainBarPrice();
+        return roundToNearest5(mainTotal * 0.65);
+      }
+
+      function fountainPrice(){
+        if(!state.fountainEnabled) return 0;
+        const guestsForTier = Math.max(clampGuests(state.guests), clampGuests(state.fountainSize || 0));
+        const base = guestsForTier <= 100 ? 350 : guestsForTier <= 200 ? 450 : 550;
+        const add = (state.fountainType === 'white' || state.fountainType === 'mixed') ? 50 : 0;
+        return roundToNearest5(base + add);
+      }
+
       function updateSecondShownPrice(){
-        const base=BASE_PRICES[state.secondSize]||0, disc=SECOND_DISCOUNT[state.secondSize]||0;
-        const val=Math.max(base-disc,0);
+        const val = secondPrice();
         if(state.secondEnabled){
           elSecondPrice.textContent = `${fmt(val)} (${pkgLabelFor(state.secondSize)})`;
         }else{
@@ -1550,30 +1613,35 @@
       elFSize.addEventListener('change',()=>{ state.fountainSize=elFSize.value; updateRunningTotal(); renderSummary(); });
       elFType.addEventListener('change',()=>{ state.fountainType=elFType.value; updateRunningTotal(); renderSummary(); });
 
-      function basePrice(){
-        if (!state.pkg || !state.mainBar) return 0;
-        const base = BASE_PRICES[state.pkg] || 0;
-        const add = BAR_META[state.mainBar]?.add || 0;
-        return base + add;
-      }
-      function secondPrice(){ if(!state.secondEnabled) return 0; const base=BASE_PRICES[state.secondSize]||0; const disc=SECOND_DISCOUNT[state.secondSize]||0; return Math.max(base-disc,0); }
-      function fountainPrice(){ if(!state.fountainEnabled) return 0; const base=FOUNTAIN_PRICE[state.fountainSize]||0; const add=(state.fountainType==='white'||state.fountainType==='mixed')?50:0; return base+add; }
       function compute(){
-        const base = basePrice();
+        const base = mainBarPrice();
         const s2 = secondPrice();
         const fnt = fountainPrice();
-        const total = base + s2 + fnt;
-        let dueNow = 0, savings = 0;
-        if (state.pay === 'full') { savings = FULL_FLAT_OFF; dueNow = Math.max(total - FULL_FLAT_OFF, 0); }
-        else { dueNow = Math.round(total * 0.25); }
-        return { base, s2, fnt, total, dueNow, savings };
+        const beforeDiscount = base + s2 + fnt;
+        let total = roundToNearest5(beforeDiscount);
+        let savings = 0;
+        if (state.pay === 'full') {
+          savings = FULL_FLAT_OFF;
+          total = roundToNearest5(Math.max(total - FULL_FLAT_OFF, 0));
+        }
+        const dueNow = state.pay === 'full' ? total : Math.round(total * 0.25);
+        return { base, s2, fnt, total, dueNow, savings, beforeDiscount };
       }
 
       function updateRunningTotal(){
-        const { total, dueNow } = compute();
-        $$('.running[data-running]').forEach(el => el.textContent = t('runningTotal', { total: fmt(total), due: fmt(dueNow) }));
+        const { total } = compute();
+        $$('.running[data-running]').forEach(el => el.textContent = t('runningTotal', { total: fmt(total) }));
+        updatePerGuestLine();
         updateFinancingNotes(total);
         if (state.step === TOTAL_STEPS-1) renderSummary();
+      }
+
+      function updatePerGuestLine(){
+        const perGuestEl = $('[data-per-guest]');
+        if (!perGuestEl) return;
+        const { perGuest } = mainBarCalc();
+        const label = t('perGuest', { price: fmt(perGuest || 0) });
+        perGuestEl.textContent = label;
       }
 
       function updateFinancingNotes(total){
@@ -1618,7 +1686,7 @@
 
       async function loadSlotsIfDate(){
         slotGrid.innerHTML='';
-        if(!state.dateISO || !state.pkg){ slotHint.textContent = t('slot_hint_pick'); return; }
+        if(!state.dateISO || !state.hours){ slotHint.textContent = t('slot_hint_pick'); return; }
         slotHint.textContent = t('slot_hint_loading');
         try {
           const qs = new URLSearchParams({ date: state.dateISO, hours: String(state.hours||0) });
@@ -1661,10 +1729,11 @@
 
       function renderSummary(){
         const barTitle = state.mainBar ? (t(`bar_${state.mainBar}_title`) || BAR_META[state.mainBar]?.title || '—') : '—';
-        const { total, dueNow, savings } = compute();
+        const { total, dueNow, savings, base: mainTotal, s2: secondTotal, fnt: fountainTotal } = compute();
         const locale = localeMap[state.lang] || 'en-US';
-        $('[data-sum-main]').textContent = state.mainBar ? `${barTitle}` : '—';
-        $('[data-sum-pkg]').textContent = state.pkg ? pkgLabelFor(state.pkg) : '—';
+        const guestLabel = state.lang === 'es' ? 'invitados' : 'guests';
+        $('[data-sum-main]').textContent = state.mainBar ? `${barTitle} • ${fmt(mainTotal)}` : '—';
+        $('[data-sum-pkg]').textContent = state.guests ? `${state.guests} ${guestLabel} • ${hoursLabel(state.hours)}` : '—';
         $('[data-sum-total]').textContent = fmt(total);
         $('[data-sum-due]').textContent = fmt(dueNow);
         $('[data-sum-paymode]').textContent = state.pay === 'full' ? t('pay_full') : t('pay_deposit');
@@ -1690,8 +1759,8 @@
         const addonsList = $('[data-sum-addons]');
         addonsList.innerHTML = '';
         const items = [];
-        if (state.secondEnabled) items.push(`${t('addon_second_title')} • ${t(`bar_${state.secondBar}_title`) || state.secondBar} (${pkgLabelFor(state.secondSize)}) — ${fmt(secondPrice())}`);
-        if (state.fountainEnabled) items.push(`${t('addon_fountain_title')} (${state.fountainSize}) — ${fmt(fountainPrice())}`);
+        if (state.secondEnabled) items.push(`${t('addon_second_title')} • ${t(`bar_${state.secondBar}_title`) || state.secondBar} (${pkgLabelFor(state.secondSize)}) — ${fmt(secondTotal)}`);
+        if (state.fountainEnabled) items.push(`${t('addon_fountain_title')} (${state.fountainSize}) — ${fmt(fountainTotal)}`);
         if (!items.length){
           const li=document.createElement('li');
           li.textContent = t('summary_no_addons');
@@ -1700,15 +1769,18 @@
           items.forEach(text => { const li=document.createElement('li'); li.textContent=text; addonsList.appendChild(li); });
         }
 
-        $('[data-sum-second]').textContent = state.secondEnabled ? `${t(`bar_${state.secondBar}_title`) || state.secondBar} • ${fmt(secondPrice())}` : t('summary_second_none');
-        $('[data-sum-fountain]').textContent = state.fountainEnabled ? `${state.fountainSize} • ${fmt(fountainPrice())}` : t('summary_fountain_none');
+        $('[data-sum-second]').textContent = state.secondEnabled ? `${t(`bar_${state.secondBar}_title`) || state.secondBar} • ${fmt(secondTotal)}` : t('summary_second_none');
+        $('[data-sum-fountain]').textContent = state.fountainEnabled ? `${state.fountainSize} • ${fmt(fountainTotal)}` : t('summary_fountain_none');
       }
 
       function readyPayload(){
+        const totals = compute();
         return {
-          pkg: state.pkg,
+          guests: state.guests,
+          hours: state.hours,
           mainBar: state.mainBar,
           payMode: state.pay,
+          total: totals.total,
           lang: state.lang,
           secondEnabled: state.secondEnabled,
           secondBar: state.secondBar,
@@ -1759,6 +1831,7 @@
 
       $('[data-pay]').addEventListener('click', doPay);
 
+      syncGuests(state.guests);
       go(0);
       renderCalendar();
       updateSecondShownPrice();
