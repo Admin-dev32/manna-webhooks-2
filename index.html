@@ -839,6 +839,7 @@
                       <input type="number" min="30" max="350" step="10" value="80" data-guest-input>
                     </div>
                   </div>
+                  <p class="desc" data-guest-count>Guests: 80 people</p>
                   <p class="desc" data-per-guest>Price per guest: $0.00</p>
                 </div>
               </div>
@@ -1094,7 +1095,6 @@
       const TOTAL_STEPS = 6;
       const localeMap = { en: 'en-US', es: 'es-MX' };
 
-      const TAX_RATE = 1.0825;
       const BAR_META = {
         pancake: { title: '🥞 Mini Pancake', add: 0 },
         esquites: { title: '🌽 Esquites', add: 0 },
@@ -1116,6 +1116,7 @@
           errorIncomplete: 'Please complete all required fields.',
           runningTotal: 'Total {total} (Tax included)',
           perGuest: 'Price per guest: {price}',
+          guestCount: 'Guests: {count} people',
           step1Eyebrow: 'Step 1',
           step1Title: '🍫 Choose your main bar',
           step1Note: 'Mix & match your favorite flavors.',
@@ -1241,6 +1242,7 @@
           errorIncomplete: 'Completa todos los campos obligatorios.',
           runningTotal: 'Total {total} (Impuestos incluidos)',
           perGuest: 'Precio por invitado: {price}',
+          guestCount: 'Invitados: {count} personas',
           step1Eyebrow: 'Paso 1',
           step1Title: '🍫 Elige tu barra principal',
           step1Note: 'Combina tus sabores favoritos.',
@@ -1555,7 +1557,7 @@
       }
 
       function roundToNearest5(n){ return Math.round((n || 0) / 5) * 5; }
-      function calculateDynamicTotal(guests, barType='standard'){
+      function calculateDynamicTotal(guests, barType='standard') {
         const g = clampGuests(guests || state.guests || 0);
         const labor = g <= 100 ? 75 : g <= 250 ? 150 : 200;
         const toppings = g <= 150 ? 100 : g <= 300 ? 150 : 200;
@@ -1563,12 +1565,13 @@
         const profit = g <= 50 ? 250 : g <= 100 ? 200 : 150;
 
         let subtotal = labor + toppings + gas + profit;
-        if (barType === 'tostiloco'){
-          subtotal += (g / 100) * 50;
+
+        if (barType === 'tostiloco') {
+          subtotal += (g / 100) * 50; // premium +$50 scaled for Tostiloco Bar
         }
 
-        const totalWithTax = subtotal * TAX_RATE;
-        const total = roundToNearest5(totalWithTax);
+        const totalWithTax = subtotal * 1.0825;
+        const total = Math.round(totalWithTax / 5) * 5;
         const perGuest = total / g;
 
         return { total, perGuest };
@@ -1601,7 +1604,8 @@
       function updateSecondShownPrice(){
         const val = secondPrice();
         if(state.secondEnabled){
-          elSecondPrice.textContent = `${fmt(val)} (${pkgLabelFor(state.secondSize)})`;
+          const guestLabel = state.lang === 'es' ? 'invitados' : 'guests';
+          elSecondPrice.textContent = `${fmt(val)} • ${state.guests} ${guestLabel} • ${hoursLabel(state.hours)}`;
         }else{
           elSecondPrice.textContent = t('summary_second_none');
         }
@@ -1638,6 +1642,9 @@
 
       function updatePerGuestLine(){
         const perGuestEl = $('[data-per-guest]');
+        const guestCountEl = $('[data-guest-count]');
+        const guestLabel = t('guestCount', { count: state.guests || 0 });
+        if (guestCountEl) guestCountEl.textContent = guestLabel;
         if (!perGuestEl) return;
         const { perGuest } = mainBarCalc();
         const label = t('perGuest', { price: fmt(perGuest || 0) });
