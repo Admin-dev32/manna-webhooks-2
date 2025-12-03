@@ -277,6 +277,27 @@
       background:linear-gradient(90deg,rgba(249,168,212,.2),rgba(192,132,252,.25));
       outline:none;
       box-shadow:0 6px 14px rgba(192,132,252,.18) inset;
+      position:relative;
+      z-index:2;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height:10px;
+      border-radius:999px;
+      background:linear-gradient(90deg,rgba(249,168,212,.24),rgba(192,132,252,.28));
+      box-shadow:0 4px 10px rgba(192,132,252,.12) inset;
+    }
+
+    input[type="range"]::-moz-range-track {
+      height:10px;
+      border-radius:999px;
+      background:linear-gradient(90deg,rgba(249,168,212,.24),rgba(192,132,252,.28));
+      box-shadow:0 4px 10px rgba(192,132,252,.12) inset;
+    }
+
+    input[type="range"]:focus-visible {
+      outline:none;
+      box-shadow:0 0 0 6px rgba(192,132,252,.18);
     }
 
     input[type="range"]::-webkit-slider-thumb {
@@ -878,7 +899,7 @@
             <div class="add-on-list" data-choices="pkg">
               <div class="choice">
                 <div class="choice-body">
-                  <div class="label"><span data-i18n="pkg_small_title">50–150 guests</span><span class="badge" data-hours-badge>2 hrs live</span></div>
+                  <div class="label"><span data-i18n="pkg_small_title" data-guest-title>80 guests</span><span class="badge" data-hours-badge>2 hrs live</span></div>
                   <div class="desc" data-i18n="pkg_small_desc">Perfect for birthdays, showers, and intimate events.</div>
                   <div class="guest-range" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px;">
                     <input type="range" id="guestRange" min="30" max="350" step="10" value="80" data-guest-range style="flex:1 1 220px;">
@@ -1447,6 +1468,7 @@
         $$('[data-lang]').forEach(btn => btn.classList.toggle('is-active', btn.dataset.lang === state.lang));
         setNextLabels();
         updateHoursBadge();
+        updateGuestTitle();
         updateSecondShownPrice();
         updateRunningTotal();
         renderCalendar();
@@ -1548,6 +1570,7 @@
       const range = document.getElementById('guestRange');
       const input = document.getElementById('guestInput');
       const hoursBadge = $('[data-hours-badge]');
+      const guestTitle = $('[data-guest-title]');
 
       function clampGuests(val){
         const num = Number(val) || 0;
@@ -1571,6 +1594,12 @@
         if (hoursBadge) hoursBadge.textContent = hoursLabel(state.hours);
       }
 
+      function updateGuestTitle(){
+        if (!guestTitle) return;
+        const label = state.lang === 'es' ? 'invitados' : 'guests';
+        guestTitle.textContent = `${state.guests || 0} ${label}`;
+      }
+
       function syncGuests(val){
         const g = clampGuests(val);
         state.guests = g;
@@ -1578,6 +1607,7 @@
         if (guestRangeInput && guestRangeInput.value !== String(g)) guestRangeInput.value = g;
         if (guestNumberInput && guestNumberInput.value !== String(g)) guestNumberInput.value = g;
         updateHoursBadge();
+        updateGuestTitle();
         updateSecondShownPrice();
         updateRunningTotal();
         renderSummary();
