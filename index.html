@@ -834,11 +834,12 @@
                   <div class="label"><span data-i18n="pkg_small_title">50–150 guests</span><span class="badge" data-hours-badge>2 hrs live</span></div>
                   <div class="desc" data-i18n="pkg_small_desc">Perfect for birthdays, showers, and intimate events.</div>
                   <div class="guest-range" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px;">
-                    <input type="range" min="30" max="350" step="10" value="100" data-guest-range style="flex:1 1 220px;">
+                    <input type="range" min="30" max="350" step="10" value="80" data-guest-range style="flex:1 1 220px;">
                     <div class="input" style="flex:0 0 120px;">
-                      <input type="number" min="30" max="350" step="10" value="100" data-guest-input>
+                      <input type="number" min="30" max="350" step="10" value="80" data-guest-input>
                     </div>
                   </div>
+                  <p class="desc" data-per-guest>Price per guest: $0.00</p>
                 </div>
               </div>
             </div>
@@ -1094,9 +1095,6 @@
       const localeMap = { en: 'en-US', es: 'es-MX' };
 
       const TAX_RATE = 1.0825;
-      const LABOR_MIN = 150;
-      const GAS_FLAT = 20;
-      const PREMIUM_BASE_ADD = 50;
       const BAR_META = {
         pancake: { title: '🥞 Mini Pancake', add: 0 },
         esquites: { title: '🌽 Esquites', add: 0 },
@@ -1104,7 +1102,6 @@
         tostiloco: { title: '🌶️ Tostiloco (Premium)', add: 0 },
         snack: { title: '🍭 Manna Snack Bar — “La Clásica”', add: 0 }
       };
-      const FOUNTAIN_PRICE = { "50": 350, "100": 450, "150": 550 };
       const FULL_FLAT_OFF = 20;
 
       const translations = {
@@ -1118,6 +1115,7 @@
           actionPayNow: 'Confirm & pay 💳',
           errorIncomplete: 'Please complete all required fields.',
           runningTotal: 'Total {total} (Tax included)',
+          perGuest: 'Price per guest: {price}',
           step1Eyebrow: 'Step 1',
           step1Title: '🍫 Choose your main bar',
           step1Note: 'Mix & match your favorite flavors.',
@@ -1242,6 +1240,7 @@
           actionPayNow: 'Confirmar y pagar 💳',
           errorIncomplete: 'Completa todos los campos obligatorios.',
           runningTotal: 'Total {total} (Impuestos incluidos)',
+          perGuest: 'Precio por invitado: {price}',
           step1Eyebrow: 'Paso 1',
           step1Title: '🍫 Elige tu barra principal',
           step1Note: 'Combina tus sabores favoritos.',
@@ -1364,7 +1363,7 @@
       const state = {
         step: 0,
         mainBar: '',
-        guests: 100,
+        guests: 80,
         hours: 2,
         secondEnabled: false,
         secondBar: 'pancake',
@@ -1555,84 +1554,48 @@
         return '';
       }
 
-      function pkgGuestAverage(key){
-        const nums = (key || '').match(/(\d+)/g) || [];
-        if (nums.length >= 2) return clampGuests((Number(nums[0]) + Number(nums[1])) / 2);
-        return clampGuests(state.guests || 100);
-      }
-
-      function toppingsCost(guests){
-        if (guests <= 150) return 100;
-        if (guests <= 300) return 100 + ((guests - 150) / 150) * 50;
-        return 150 + ((guests - 300) / 50) * 50;
-      }
-
-      function perGuestWithTax(guests){
-        const g = clampGuests(guests || 0);
-        const points = [
-          { g: 30, p: 9.5 },
-          { g: 100, p: 5.75 },
-          { g: 200, p: 4.25 },
-          { g: 300, p: 3.75 },
-          { g: 350, p: 3.5 }
-        ];
-        for (let i = 0; i < points.length - 1; i++){
-          const a = points[i], b = points[i+1];
-          if (g <= b.g){
-            const ratio = (g - a.g) / (b.g - a.g);
-            return a.p + (b.p - a.p) * Math.max(0, Math.min(1, ratio));
-          }
-        }
-        return points[points.length-1].p;
-      }
-
       function roundToNearest5(n){ return Math.round((n || 0) / 5) * 5; }
-
-      function premiumAddForGuests(guests){
-        return PREMIUM_BASE_ADD * (clampGuests(guests) / 100);
-      }
-
-      function baseCosts(guests){
-        return LABOR_MIN + GAS_FLAT + toppingsCost(guests);
-      }
-
-      function priceForGuests(guests, { extraWithTax = 0 } = {}){
+      function calculateDynamicTotal(guests, barType='standard'){
         const g = clampGuests(guests || state.guests || 0);
-        const targetWithTax = perGuestWithTax(g) * g + extraWithTax;
-        const preTaxTarget = targetWithTax / TAX_RATE;
-        const costs = baseCosts(g);
-        const preTaxMin = costs + 150;
-        const preTaxMax = costs + 300;
-        const preTax = Math.min(Math.max(preTaxTarget, preTaxMin), preTaxMax);
-        const withTax = roundToNearest5(preTax * TAX_RATE);
-        return { withTax, preTax: withTax / TAX_RATE };
+        const labor = g <= 100 ? 75 : g <= 250 ? 150 : 200;
+        const toppings = g <= 150 ? 100 : g <= 300 ? 150 : 200;
+        const gas = 20;
+        const profit = g <= 50 ? 250 : g <= 100 ? 200 : 150;
+
+        let subtotal = labor + toppings + gas + profit;
+        if (barType === 'tostiloco'){
+          subtotal += (g / 100) * 50;
+        }
+
+        const totalWithTax = subtotal * TAX_RATE;
+        const total = roundToNearest5(totalWithTax);
+        const perGuest = total / g;
+
+        return { total, perGuest };
+      }
+
+      function mainBarCalc(){
+        if (!state.mainBar || !state.guests) return { total: 0, perGuest: 0 };
+        const type = state.mainBar === 'tostiloco' ? 'tostiloco' : 'standard';
+        return calculateDynamicTotal(state.guests, type);
       }
 
       function mainBarPrice(){
-        if (!state.mainBar || !state.guests) return 0;
-        const premiumExtra = state.mainBar === 'tostiloco' ? premiumAddForGuests(state.guests) : 0;
-        return priceForGuests(state.guests, { extraWithTax: premiumExtra }).withTax;
-      }
-
-      function secondDiscountForGuests(g){
-        if (g <= 150) return 0.10;
-        if (g <= 250) return 0.12;
-        return 0.15;
+        return mainBarCalc().total;
       }
 
       function secondPrice(){
         if(!state.secondEnabled) return 0;
-        const guests = pkgGuestAverage(state.secondSize);
-        const { withTax } = priceForGuests(guests);
-        const discount = secondDiscountForGuests(guests);
-        return roundToNearest5(withTax * (1 - discount));
+        const mainTotal = mainBarPrice();
+        return roundToNearest5(mainTotal * 0.65);
       }
 
       function fountainPrice(){
         if(!state.fountainEnabled) return 0;
-        const base=FOUNTAIN_PRICE[state.fountainSize]||0;
-        const add=(state.fountainType==='white'||state.fountainType==='mixed')?50:0;
-        return base+add;
+        const guestsForTier = Math.max(clampGuests(state.guests), clampGuests(state.fountainSize || 0));
+        const base = guestsForTier <= 100 ? 350 : guestsForTier <= 200 ? 450 : 550;
+        const add = (state.fountainType === 'white' || state.fountainType === 'mixed') ? 50 : 0;
+        return roundToNearest5(base + add);
       }
 
       function updateSecondShownPrice(){
@@ -1668,8 +1631,17 @@
       function updateRunningTotal(){
         const { total } = compute();
         $$('.running[data-running]').forEach(el => el.textContent = t('runningTotal', { total: fmt(total) }));
+        updatePerGuestLine();
         updateFinancingNotes(total);
         if (state.step === TOTAL_STEPS-1) renderSummary();
+      }
+
+      function updatePerGuestLine(){
+        const perGuestEl = $('[data-per-guest]');
+        if (!perGuestEl) return;
+        const { perGuest } = mainBarCalc();
+        const label = t('perGuest', { price: fmt(perGuest || 0) });
+        perGuestEl.textContent = label;
       }
 
       function updateFinancingNotes(total){
@@ -1802,11 +1774,13 @@
       }
 
       function readyPayload(){
+        const totals = compute();
         return {
           guests: state.guests,
           hours: state.hours,
           mainBar: state.mainBar,
           payMode: state.pay,
+          total: totals.total,
           lang: state.lang,
           secondEnabled: state.secondEnabled,
           secondBar: state.secondBar,
