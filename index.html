@@ -246,7 +246,9 @@
 
     .choice input {
       position:absolute;
-      inset:0;
+      width:1px;
+      height:1px;
+      inset:auto;
       opacity:0;
       cursor:pointer;
     }
@@ -262,6 +264,51 @@
       gap:8px;
       transition:border-color .2s ease, box-shadow .2s ease, background .2s ease;
       min-height:100%;
+      position:relative;
+      z-index:1;
+    }
+
+    input[type="range"] {
+      -webkit-appearance:none;
+      appearance:none;
+      width:100%;
+      height:10px;
+      border-radius:999px;
+      background:linear-gradient(90deg,rgba(249,168,212,.2),rgba(192,132,252,.25));
+      outline:none;
+      box-shadow:0 6px 14px rgba(192,132,252,.18) inset;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance:none;
+      appearance:none;
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-strong));
+      box-shadow:0 6px 14px rgba(192,132,252,.35);
+      border:2px solid #fff;
+      cursor:pointer;
+      transition:box-shadow .2s ease, transform .2s ease;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-strong));
+      box-shadow:0 6px 14px rgba(192,132,252,.35);
+      border:2px solid #fff;
+      cursor:pointer;
+      transition:box-shadow .2s ease, transform .2s ease;
+    }
+
+    input[type="range"]:hover::-webkit-slider-thumb,
+    input[type="range"]:focus-visible::-webkit-slider-thumb,
+    input[type="range"]:hover::-moz-range-thumb,
+    input[type="range"]:focus-visible::-moz-range-thumb {
+      box-shadow:0 8px 18px rgba(192,132,252,.45);
+      transform:translateY(-1px);
     }
 
     .choice .title { font-weight:700; font-size:17px; }
@@ -834,9 +881,9 @@
                   <div class="label"><span data-i18n="pkg_small_title">50–150 guests</span><span class="badge" data-hours-badge>2 hrs live</span></div>
                   <div class="desc" data-i18n="pkg_small_desc">Perfect for birthdays, showers, and intimate events.</div>
                   <div class="guest-range" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px;">
-                    <input type="range" min="30" max="350" step="10" value="80" data-guest-range style="flex:1 1 220px;">
+                    <input type="range" id="guestRange" min="30" max="350" step="10" value="80" data-guest-range style="flex:1 1 220px;">
                     <div class="input" style="flex:0 0 120px;">
-                      <input type="number" min="30" max="350" step="10" value="80" data-guest-input>
+                      <input type="number" id="guestInput" min="30" max="350" step="10" value="80" data-guest-input>
                     </div>
                   </div>
                   <p class="desc" data-guest-count>Guests: 80 people</p>
@@ -1498,6 +1545,8 @@
 
       const guestRangeInput = $('[data-guest-range]');
       const guestNumberInput = $('[data-guest-input]');
+      const range = document.getElementById('guestRange');
+      const input = document.getElementById('guestInput');
       const hoursBadge = $('[data-hours-badge]');
 
       function clampGuests(val){
@@ -1537,10 +1586,25 @@
         updateControls();
       }
 
-      if (guestRangeInput) guestRangeInput.addEventListener('input', e => syncGuests(e.target.value));
+      function updateDynamicPrice(val){
+        syncGuests(val ?? (guestRangeInput ? guestRangeInput.value : state.guests));
+      }
+
+      if (range && input){
+        range.addEventListener('input', e => {
+          input.value = e.target.value;
+          updateDynamicPrice(e.target.value);
+        });
+        input.addEventListener('input', e => {
+          range.value = e.target.value;
+          updateDynamicPrice(e.target.value);
+        });
+      }
+
+      if (guestRangeInput) guestRangeInput.addEventListener('input', e => updateDynamicPrice(e.target.value));
       if (guestNumberInput){
-        guestNumberInput.addEventListener('input', e => syncGuests(e.target.value));
-        guestNumberInput.addEventListener('blur', e => syncGuests(e.target.value));
+        guestNumberInput.addEventListener('input', e => updateDynamicPrice(e.target.value));
+        guestNumberInput.addEventListener('blur', e => updateDynamicPrice(e.target.value));
       }
 
       const elSecond=$('[data-second]'), secondWrap=$('[data-second-wrap]');
