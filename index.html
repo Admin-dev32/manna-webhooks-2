@@ -1617,7 +1617,8 @@
       }
 
       function updateDynamicPrice(val){
-        syncGuests(val ?? (guestRangeInput ? guestRangeInput.value : state.guests));
+        const nextVal = val ?? (guestRangeInput ? guestRangeInput.value : state.guests);
+        syncGuests(nextVal);
       }
 
       if (range && input){
@@ -1631,8 +1632,8 @@
         });
       }
 
-      if (guestRangeInput) guestRangeInput.addEventListener('input', e => updateDynamicPrice(e.target.value));
-      if (guestNumberInput){
+      if (guestRangeInput && guestRangeInput !== range) guestRangeInput.addEventListener('input', e => updateDynamicPrice(e.target.value));
+      if (guestNumberInput && guestNumberInput !== input){
         guestNumberInput.addEventListener('input', e => updateDynamicPrice(e.target.value));
         guestNumberInput.addEventListener('blur', e => updateDynamicPrice(e.target.value));
       }
@@ -1653,15 +1654,31 @@
       function roundToNearest5(n){ return Math.round((n || 0) / 5) * 5; }
       function calculateDynamicTotal(guests, barType='standard') {
         const g = clampGuests(guests || state.guests || 0);
-        const labor = g <= 100 ? 75 : g <= 250 ? 150 : 200;
-        const toppings = g <= 150 ? 100 : g <= 300 ? 150 : 200;
-        const gas = 20;
-        const profit = g <= 50 ? 250 : g <= 100 ? 200 : 150;
 
-        let subtotal = labor + toppings + gas + profit;
+        const labor = g <= 100 ? 50 : 100; // $50 per attendant, up to 2 attendants
+        const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
+        const gas = 20;
+        const promo = 30;
+
+        function profitForGuests(count){
+          if (count <= 100){
+            const span = 70; // 30->100 guests
+            const pct = Math.min(Math.max((count - 30) / span, 0), 1);
+            const ideal = 225 - (pct * 25); // 225 down to 200
+            return Math.min(300, Math.max(150, ideal));
+          }
+          const span = 249; // 101->350 guests
+          const pct = Math.min(Math.max((count - 101) / span, 0), 1);
+          const ideal = 250 + (pct * 50); // 250 up to 300
+          return Math.min(350, Math.max(200, ideal));
+        }
+
+        const profit = profitForGuests(g);
+
+        let subtotal = labor + toppings + gas + promo + profit;
 
         if (barType === 'tostiloco') {
-          subtotal += (g / 100) * 50; // premium +$50 scaled for Tostiloco Bar
+          subtotal += (g * 0.5); // scaled premium (e.g., 100 guests => +$50)
         }
 
         const totalWithTax = subtotal * 1.0825;
