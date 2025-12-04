@@ -1873,108 +1873,6 @@
         return calculateFountainTotal(guestsForTier, state.fountainType);
       }
 
-      function roundToNearest5(n){ return Math.round((n || 0) / 5) * 5; }
-
-      function profitForGuests(count) {
-        const minGuests = 30;
-        const maxGuests = 350;
-        const minProfit = 150;
-        const maxProfit = 225;
-
-        const g = Math.max(minGuests, Math.min(maxGuests, count || 0));
-        const pct = (g - minGuests) / (maxGuests - minGuests);
-        const ideal = minProfit + pct * (maxProfit - minProfit);
-
-        return Math.max(minProfit, Math.min(maxProfit, ideal));
-      }
-
-      function calculateDynamicTotal(guests, barType='standard') {
-        const g = clampGuests(guests || state.guests || 0);
-        const hours = state.hours || hoursFromGuests(g);
-
-        const attendants = employeesForGuests(g);
-        const totalHours = 1.5 + hours;
-        const labor = attendants * 18 * totalHours;
-        const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
-        const gas = 20;
-        const promo = 30;
-        const profit = profitForGuests(g);
-
-        let subtotal = labor + toppings + gas + promo + profit;
-
-        if (barType === 'tostiloco') {
-          subtotal += (g * 0.5);
-        }
-
-        const totalWithTax = subtotal * 1.0825;
-        const total = Math.round(totalWithTax / 5) * 5;
-        const perGuest = total / g;
-
-        return { total, perGuest };
-      }
-
-      function mainBarCalc(){
-        if (!state.mainBar || !state.guests) return { total: 0, perGuest: 0 };
-        const type = state.mainBar === 'tostiloco' ? 'tostiloco' : 'standard';
-        return calculateDynamicTotal(state.guests, type);
-      }
-
-      function mainBarPrice(){
-        return mainBarCalc().total;
-      }
-
-      function secondPrice(){
-        if(!state.secondEnabled) return 0;
-
-        const g = clampGuests(state.guests);
-        const hours = hoursFromGuests(g);
-        const attendants = employeesForGuests(g);
-        const totalHours = 1.5 + hours;
-        const labor = attendants * 18 * totalHours;
-        const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
-        const profit = Math.max(120, profitForGuests(g) * 0.8);
-
-        let subtotal = labor + toppings + profit;
-
-        if (state.secondBar === 'tostiloco') {
-          subtotal += (g * 0.5);
-        }
-
-        const totalWithTax = subtotal * 1.0825;
-        const total = roundToNearest5(totalWithTax);
-        return total;
-      }
-
-      function calculateFountainTotal(tierGuests, chocolateType){
-        const g = clampGuests(tierGuests || state.guests || 0);
-        const hours = hoursFromGuests(g);
-        const attendants = employeesForGuests(g);
-        const totalHours = 1.5 + hours;
-        const labor = attendants * 18 * totalHours;
-        const toppings = g <= 75 ? 100 : g <= 125 ? 150 : 200;
-        const gas = 0;
-        const promo = 0;
-
-        const baseTarget = g <= 75 ? 350 : g <= 125 ? 450 : 550;
-        const premium = (chocolateType === 'white' || chocolateType === 'mixed') ? 50 : 0;
-        const targetWithPremium = baseTarget + premium;
-        const desiredPreTax = targetWithPremium / 1.0825;
-
-        const fixedCosts = labor + toppings + gas + promo;
-        const profitRaw = desiredPreTax - fixedCosts;
-        const profit = Math.max(150, Math.min(225, profitRaw));
-
-        const subtotal = fixedCosts + profit;
-        const totalWithTax = subtotal * 1.0825;
-        return roundToNearest5(totalWithTax);
-      }
-
-      function fountainPrice(){
-        if(!state.fountainEnabled) return 0;
-        const guestsForTier = Math.max(clampGuests(state.guests), clampGuests(state.fountainSize || 0));
-        return calculateFountainTotal(guestsForTier, state.fountainType);
-      }
-
       function updateSecondShownPrice(){
         const val = secondPrice();
         if(state.secondEnabled){
@@ -2167,20 +2065,20 @@
         $('[data-sum-fountain]').textContent = state.fountainEnabled ? `${state.fountainSize} • ${fmt(fountainTotal)}` : t('summary_fountain_none');
       }
 
+      function classifyPkgFromGuests(guests) {
+        const g = Number(guests) || 0;
+        if (g <= 150) return '50-150-5h';
+        if (g <= 250) return '150-250-5h';
+        return '250-350-6h';
+      }
+
       function readyPayload(){
         const totals = compute();
-        const pkg = {
-          code: 'custom',
-          guests: state.guests,
-          hours: state.hours,
-          label: `${state.guests} guests • ${state.hours} hrs`
-        };
+        const pkgCode = classifyPkgFromGuests(state.guests || 0);
+        const secondPkgCode = classifyPkgFromGuests(state.secondGuests || state.guests || 0);
         return {
-          pkg: JSON.stringify(pkg),
-          pkg_code: String(pkg.code),
-          pkg_guests: String(pkg.guests),
-          pkg_hours: String(pkg.hours),
-          pkg_label: String(pkg.label),
+          total: totals.total,
+          dueNow: totals.dueNow,
           guests: state.guests,
           hours: state.hours,
           mainBar: state.mainBar,
@@ -2189,9 +2087,10 @@
           dueNow: totals.dueNow,
           tax: 8.25,
           lang: state.lang,
+          pkg: pkgCode,
           secondEnabled: state.secondEnabled,
           secondBar: state.secondBar,
-          secondGuests: state.secondGuests,
+          secondSize: secondPkgCode,
           fountainEnabled: state.fountainEnabled,
           fountainSize: state.fountainSize,
           fountainType: state.fountainType,
