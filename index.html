@@ -591,9 +591,9 @@
 
     .panel h3 { margin:0 0 12px; font-size:17px; }
     .summary-list { display:flex; flex-direction:column; gap:12px; }
-    .summary-row { display:flex; justify-content:space-between; gap:12px; font-size:14px; align-items:flex-start; }
-    .summary-row .label { color:var(--muted); font-weight:600; word-break:break-word; overflow-wrap:anywhere; min-width:0; }
-    .summary-row .value { font-weight:700; text-align:right; word-break:break-word; overflow-wrap:anywhere; min-width:0; }
+    .summary-row { display:flex; justify-content:space-between; gap:12px; font-size:14px; align-items:flex-start; flex-wrap:wrap; }
+    .summary-row .label { color:var(--muted); font-weight:600; min-width:140px; flex:0 0 140px; text-align:left; word-break:normal; white-space:normal; overflow-wrap:anywhere; }
+    .summary-row .value { font-weight:700; text-align:right; flex:1 1 auto; word-break:normal; white-space:normal; overflow-wrap:anywhere; }
 
     .addons ul { margin:0; padding-left:18px; display:flex; flex-direction:column; gap:6px; }
     .addons li { word-break:break-word; }
@@ -765,9 +765,9 @@
 
     .panel h3 { margin:0 0 10px; font-size:17px; }
     .summary-list { display:grid; gap:10px; }
-    .summary-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; font-size:14px; align-items:flex-start; }
-    .summary-row .label { color:var(--muted); font-weight:600; word-break:break-word; overflow-wrap:anywhere; }
-    .summary-row .value { font-weight:700; text-align:right; word-break:break-word; overflow-wrap:anywhere; }
+    .summary-row { display:flex; justify-content:space-between; gap:10px; font-size:14px; align-items:flex-start; flex-wrap:wrap; }
+    .summary-row .label { color:var(--muted); font-weight:600; min-width:130px; flex:0 0 130px; text-align:left; word-break:normal; white-space:normal; overflow-wrap:anywhere; }
+    .summary-row .value { font-weight:700; text-align:right; flex:1 1 auto; word-break:normal; white-space:normal; overflow-wrap:anywhere; }
 
     .addons ul { margin:0; padding-left:18px; }
     .addons li { margin-bottom:4px; word-break:break-word; }
@@ -1553,7 +1553,7 @@
 
       function readyToPay(){
         const emailOK = /.+@.+\..+/.test(state.email);
-        return !!(state.guests && state.mainBar && state.dateISO && state.startISO && state.name && emailOK && state.venue && state.setup && state.power && state.policy);
+        return !!(state.guests && state.mainBar && state.pay && state.dateISO && state.startISO && state.name && emailOK && state.venue && state.setup && state.power && state.policy);
       }
 
       function infoComplete(){
@@ -1723,8 +1723,8 @@
         const g = clampGuests(guests || state.guests || 0);
         const hours = state.hours || hoursFromGuests(g);
 
-        const attendants = g <= 100 ? 1 : 2;
-        const totalHours = 1.5 + hours;
+        const attendants = 2;
+        const totalHours = 3 + hours;
         const labor = attendants * 18 * totalHours;
         const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
         const gas = 20;
@@ -1759,13 +1759,13 @@
 
         const g = clampGuests(state.guests);
         const hours = state.hours || hoursFromGuests(g);
-        const attendants = g <= 100 ? 1 : 2;
-        const totalHours = 1.5 + hours;
+        const attendants = 2;
+        const totalHours = 3 + hours;
         const labor = attendants * 18 * totalHours;
         const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
         const gas = 0;
         const promo = 0;
-        const profit = profitForGuests(g) * 0.6;
+        const profit = profitForGuests(g) * 0.7;
 
         let subtotal = labor + toppings + gas + promo + profit;
 
@@ -1778,12 +1778,31 @@
         return total;
       }
 
+      function calculateFountainTotal(tierGuests, chocolateType){
+        const g = clampGuests(tierGuests || state.guests || 0);
+        const hours = hoursFromGuests(g);
+        const attendants = 2;
+        const totalHours = 3 + hours;
+        const labor = attendants * 18 * totalHours;
+        const toppings = g <= 100 ? 80 : g <= 150 ? 130 : 160;
+        const gas = 15;
+        const promo = 15;
+        const profit = Math.max(100, Math.min(170, profitForGuests(g) * 0.65));
+
+        let subtotal = labor + toppings + gas + promo + profit;
+
+        if (chocolateType === 'white' || chocolateType === 'mixed') {
+          subtotal += 50;
+        }
+
+        const totalWithTax = subtotal * 1.0825;
+        return roundToNearest5(totalWithTax);
+      }
+
       function fountainPrice(){
         if(!state.fountainEnabled) return 0;
         const guestsForTier = Math.max(clampGuests(state.guests), clampGuests(state.fountainSize || 0));
-        const base = guestsForTier <= 100 ? 350 : guestsForTier <= 200 ? 450 : 550;
-        const add = (state.fountainType === 'white' || state.fountainType === 'mixed') ? 50 : 0;
-        return roundToNearest5(base + add);
+        return calculateFountainTotal(guestsForTier, state.fountainType);
       }
 
       function updateSecondShownPrice(){
@@ -1967,11 +1986,17 @@
 
       function readyPayload(){
         const totals = compute();
+        const pkg = {
+          guests: state.guests,
+          hours: state.hours,
+          label: `${state.guests} guests • ${state.hours} hrs`
+        };
         return {
           guests: state.guests,
           hours: state.hours,
           mainBar: state.mainBar,
           payMode: state.pay,
+          pkg,
           total: totals.total,
           lang: state.lang,
           secondEnabled: state.secondEnabled,
