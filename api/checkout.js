@@ -32,6 +32,16 @@ const BAR_META = {
 function usd(n){ return Math.round(n * 100); } // dollars → cents
 
 function computeTotals(pb){
+  if (pb && pb.total != null && pb.dueNow != null) {
+    const t = Number(pb.total) || 0;
+    const d = Number(pb.dueNow) || 0;
+    return {
+      total: t,
+      dueNow: d,
+      paySavings: pb.payMode === 'full' ? FULL_FLAT_OFF : 0
+    };
+  }
+
   const base0 = BASE_PRICES[pb.pkg] || 0;
   const addMain = (BAR_META[pb.mainBar]?.priceAdd) || 0;
   const base = base0 + addMain;
