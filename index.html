@@ -1643,6 +1643,11 @@
         return t('pkg_large_hours');
       }
 
+      function employeesForGuests(g) {
+        const guests = g || state.guests || 0;
+        return guests >= 150 ? 2 : 1;
+      }
+
       function updateHoursBadge(){
         if (hoursBadge) hoursBadge.textContent = hoursLabel(state.hours);
       }
@@ -1723,8 +1728,8 @@
         const g = clampGuests(guests || state.guests || 0);
         const hours = state.hours || hoursFromGuests(g);
 
-        const attendants = 2;
-        const totalHours = 3 + hours;
+        const attendants = employeesForGuests(g);
+        const totalHours = 1.5 + hours;
         const labor = attendants * 18 * totalHours;
         const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
         const gas = 20;
@@ -1759,13 +1764,13 @@
 
         const g = clampGuests(state.guests);
         const hours = state.hours || hoursFromGuests(g);
-        const attendants = 2;
-        const totalHours = 3 + hours;
+        const attendants = employeesForGuests(g);
+        const totalHours = 1.5 + hours;
         const labor = attendants * 18 * totalHours;
         const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
         const gas = 0;
         const promo = 0;
-        const profit = profitForGuests(g) * 0.7;
+        const profit = profitForGuests(g);
 
         let subtotal = labor + toppings + gas + promo + profit;
 
@@ -1774,27 +1779,31 @@
         }
 
         const totalWithTax = subtotal * 1.0825;
-        const total = roundToNearest5(totalWithTax);
-        return total;
+        const recalculated = roundToNearest5(totalWithTax);
+        const bundled = roundToNearest5(mainBarPrice() * 0.65);
+        return bundled || recalculated;
       }
 
       function calculateFountainTotal(tierGuests, chocolateType){
         const g = clampGuests(tierGuests || state.guests || 0);
         const hours = hoursFromGuests(g);
-        const attendants = 2;
-        const totalHours = 3 + hours;
+        const attendants = employeesForGuests(g);
+        const totalHours = 1.5 + hours;
         const labor = attendants * 18 * totalHours;
-        const toppings = g <= 100 ? 80 : g <= 150 ? 130 : 160;
-        const gas = 15;
-        const promo = 15;
-        const profit = Math.max(100, Math.min(170, profitForGuests(g) * 0.65));
+        const toppings = g <= 75 ? 100 : g <= 125 ? 150 : 200;
+        const gas = 0;
+        const promo = 0;
 
-        let subtotal = labor + toppings + gas + promo + profit;
+        const baseTarget = g <= 75 ? 350 : g <= 125 ? 450 : 550;
+        const premium = (chocolateType === 'white' || chocolateType === 'mixed') ? 50 : 0;
+        const targetWithPremium = baseTarget + premium;
+        const desiredPreTax = targetWithPremium / 1.0825;
 
-        if (chocolateType === 'white' || chocolateType === 'mixed') {
-          subtotal += 50;
-        }
+        const fixedCosts = labor + toppings + gas + promo;
+        const profitRaw = desiredPreTax - fixedCosts;
+        const profit = Math.max(150, Math.min(225, profitRaw));
 
+        const subtotal = fixedCosts + profit;
         const totalWithTax = subtotal * 1.0825;
         return roundToNearest5(totalWithTax);
       }
@@ -1965,7 +1974,11 @@
         const timeText = state.startISO ? new Date(state.startISO).toLocaleTimeString(locale,{ hour:'numeric', minute:'2-digit' }) : '—';
         $('[data-sum-time]').textContent = timeText;
         $('[data-sum-venue]').textContent = state.venue || '—';
-        $('[data-sum-user]').textContent = state.name ? `${state.name} • ${state.email || ''}` : '—';
+        const contactParts = [];
+        if (state.name) contactParts.push(state.name);
+        if (state.email) contactParts.push(state.email);
+        if (state.phone) contactParts.push(state.phone);
+        $('[data-sum-user]').textContent = contactParts.length ? contactParts.join(' • ') : '—';
 
         const addonsList = $('[data-sum-addons]');
         addonsList.innerHTML = '';
@@ -1987,17 +2000,20 @@
       function readyPayload(){
         const totals = compute();
         const pkg = {
+          code: 'custom',
           guests: state.guests,
           hours: state.hours,
           label: `${state.guests} guests • ${state.hours} hrs`
         };
         return {
+          pkg,
           guests: state.guests,
           hours: state.hours,
           mainBar: state.mainBar,
           payMode: state.pay,
-          pkg,
           total: totals.total,
+          dueNow: totals.dueNow,
+          tax: 8.25,
           lang: state.lang,
           secondEnabled: state.secondEnabled,
           secondBar: state.secondBar,
