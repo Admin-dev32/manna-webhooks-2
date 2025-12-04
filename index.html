@@ -955,9 +955,9 @@
                   <div class="label"><span data-i18n="pkg_small_title" data-guest-title>80 guests</span><span class="badge" data-hours-badge>2 hrs live</span></div>
                   <div class="desc" data-i18n="pkg_small_desc">Perfect for birthdays, showers, and intimate events.</div>
                   <div class="guest-range" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px;">
-                    <input type="range" id="guestRange" min="30" max="350" step="10" value="80" data-guest-range style="flex:1 1 220px;">
+                    <input type="range" id="guestRange" min="30" max="350" step="20" value="80" data-guest-range style="flex:1 1 220px;">
                     <div class="input" style="flex:0 0 120px;">
-                      <input type="number" id="guestInput" min="30" max="350" step="10" value="80" data-guest-input>
+                      <input type="number" id="guestInput" min="30" max="350" step="20" value="80" data-guest-input>
                     </div>
                   </div>
                   <p class="desc" data-guest-count>Guests: 80 people</p>
@@ -1006,11 +1006,28 @@
                   </div>
                   <div class="field">
                     <label data-i18n="addon_second_size_label">Guest count</label>
-                    <select data-second-size>
-                      <option value="50-150-5h" data-i18n="pkg_small_title">50–150 guests</option>
-                      <option value="150-250-5h" data-i18n="pkg_medium_title">150–250 guests</option>
-                      <option value="250-350-6h" data-i18n="pkg_large_title">250–350 guests</option>
-                    </select>
+                    <div class="guest-range" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:8px;">
+                      <input
+                        type="range"
+                        min="40"
+                        max="340"
+                        step="20"
+                        value="80"
+                        data-second-guest-range
+                        style="flex:1 1 220px;"
+                      >
+                      <div class="input" style="flex:0 0 120px;">
+                        <input
+                          type="number"
+                          min="40"
+                          max="340"
+                          step="20"
+                          value="80"
+                          data-second-guest-input
+                        >
+                      </div>
+                    </div>
+                    <p class="desc" data-second-guest-count>Guests: 80 people</p>
                   </div>
                 </div>
               </div>
@@ -1488,9 +1505,9 @@
         mainBar: '',
         guests: 80,
         hours: 2,
+        secondGuests: 80,
         secondEnabled: false,
         secondBar: 'pancake',
-        secondSize: '50-150-5h',
         fountainEnabled: false,
         fountainSize: '50',
         fountainType: 'dark',
@@ -1624,11 +1641,17 @@
       const input = document.getElementById('guestInput');
       const hoursBadge = $('[data-hours-badge]');
       const guestTitle = $('[data-guest-title]');
+      const secondGuestRange = $('[data-second-guest-range]');
+      const secondGuestInput = $('[data-second-guest-input]');
+      const secondGuestCountLabel = $('[data-second-guest-count]');
 
       function clampGuests(val){
+        const min = 30;
+        const max = 350;
         const num = Number(val) || 0;
-        const clamped = Math.min(350, Math.max(30, num));
-        return Math.round(clamped / 10) * 10;
+        const clamped = Math.min(max, Math.max(min, num));
+        const snapped = Math.round((clamped - min) / 20) * 20 + min;
+        return Math.min(max, Math.max(min, snapped));
       }
 
       function hoursFromGuests(g){
@@ -1679,6 +1702,30 @@
         syncGuests(nextVal);
       }
 
+      function updateSecondGuests(val) {
+        const g = clampGuests(val);
+        state.secondGuests = g;
+
+        if (secondGuestRange && secondGuestRange.value !== String(g)) {
+          secondGuestRange.value = g;
+        }
+        if (secondGuestInput && secondGuestInput.value !== String(g)) {
+          secondGuestInput.value = g;
+        }
+
+        const label = state.lang === 'es'
+          ? `Invitados: ${g} personas`
+          : `Guests: ${g} people`;
+
+        if (secondGuestCountLabel) {
+          secondGuestCountLabel.textContent = label;
+        }
+
+        updateSecondShownPrice();
+        updateRunningTotal();
+        renderSummary();
+      }
+
       if (range && input){
         range.addEventListener('input', e => {
           input.value = e.target.value;
@@ -1696,17 +1743,134 @@
         guestNumberInput.addEventListener('blur', e => updateDynamicPrice(e.target.value));
       }
 
-      const elSecond=$('[data-second]'), secondWrap=$('[data-second-wrap]');
-      const elSecondBar=$('[data-second-bar]'), elSecondSize=$('[data-second-size]'), elSecondPrice=$('[data-second-price]');
-      elSecond.addEventListener('change',()=>{ state.secondEnabled=elSecond.checked; secondWrap.style.display=state.secondEnabled?'':'none'; updateSecondShownPrice(); updateRunningTotal(); renderSummary(); });
-      elSecondBar.addEventListener('change',()=>{ state.secondBar=elSecondBar.value; updateSecondShownPrice(); updateRunningTotal(); renderSummary(); });
-      elSecondSize.addEventListener('change',()=>{ state.secondSize=elSecondSize.value; updateSecondShownPrice(); updateRunningTotal(); renderSummary(); });
+      if (secondGuestRange && secondGuestInput) {
+        secondGuestRange.addEventListener('input', e => updateSecondGuests(e.target.value));
+        secondGuestInput.addEventListener('input', e => updateSecondGuests(e.target.value));
+        secondGuestInput.addEventListener('blur', e => updateSecondGuests(e.target.value));
+      }
 
-      function pkgLabelFor(key){
-        if(key==='50-150-5h') return `${t('pkg_small_title')} • ${t('pkg_small_hours')}`;
-        if(key==='150-250-5h') return `${t('pkg_medium_title')} • ${t('pkg_medium_hours')}`;
-        if(key==='250-350-6h') return `${t('pkg_large_title')} • ${t('pkg_large_hours')}`;
-        return '';
+      const elSecond=$('[data-second]'), secondWrap=$('[data-second-wrap]');
+      const elSecondBar=$('[data-second-bar]'), elSecondPrice=$('[data-second-price]');
+      elSecond.addEventListener('change',()=>{
+        state.secondEnabled=elSecond.checked;
+        secondWrap.style.display=state.secondEnabled?'':'none';
+
+        if (state.secondEnabled) {
+          const initial = state.secondGuests || state.guests || 80;
+          updateSecondGuests(initial);
+        }
+
+        updateSecondShownPrice();
+        updateRunningTotal();
+        renderSummary();
+      });
+      elSecondBar.addEventListener('change',()=>{ state.secondBar=elSecondBar.value; updateSecondShownPrice(); updateRunningTotal(); renderSummary(); });
+
+      function roundToNearest5(n){ return Math.round((n || 0) / 5) * 5; }
+
+      function profitForGuests(count) {
+        const minGuests = 30;
+        const maxGuests = 350;
+        const minProfit = 150;
+        const maxProfit = 225;
+
+        const g = Math.max(minGuests, Math.min(maxGuests, count || 0));
+        const pct = (g - minGuests) / (maxGuests - minGuests);
+        const ideal = minProfit + pct * (maxProfit - minProfit);
+
+        return Math.max(minProfit, Math.min(maxProfit, ideal));
+      }
+
+      function secondDiscountForGuests(count) {
+        const minGuests = 40;
+        const maxGuests = 340;
+        const minDisc = 20;
+        const maxDisc = 75;
+
+        const g = Math.max(minGuests, Math.min(maxGuests, Number(count) || 0));
+        const pct = (g - minGuests) / (maxGuests - minGuests);
+        const raw = minDisc + pct * (maxDisc - minDisc);
+
+        return roundToNearest5(raw);
+      }
+
+      function calculateDynamicTotal(guests, barType='standard') {
+        const g = clampGuests(guests || state.guests || 0);
+        const hours = hoursFromGuests(g);
+
+        const attendants = employeesForGuests(g);
+        const totalHours = 1.5 + hours;
+        const labor = attendants * 18 * totalHours;
+        const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
+        const gas = 20;
+        const promo = 30;
+        const profit = profitForGuests(g);
+
+        let subtotal = labor + toppings + gas + promo + profit;
+
+        if (barType === 'tostiloco') {
+          subtotal += (g * 0.5);
+        }
+
+        const totalWithTax = subtotal * 1.0825;
+        const total = Math.round(totalWithTax / 5) * 5;
+        const perGuest = total / g;
+
+        return { total, perGuest };
+      }
+
+      function mainBarCalc(){
+        if (!state.mainBar || !state.guests) return { total: 0, perGuest: 0 };
+        const type = state.mainBar === 'tostiloco' ? 'tostiloco' : 'standard';
+        return calculateDynamicTotal(state.guests, type);
+      }
+
+      function mainBarPrice(){
+        return mainBarCalc().total;
+      }
+
+      function secondPrice(){
+        if(!state.secondEnabled) return 0;
+
+        const g = clampGuests(state.secondGuests || state.guests || 0);
+        const type = state.secondBar === 'tostiloco' ? 'tostiloco' : 'standard';
+
+        const base = calculateDynamicTotal(g, type).total;
+        const disc = secondDiscountForGuests(g);
+        const discounted = Math.max(0, base - disc);
+
+        return roundToNearest5(discounted);
+      }
+
+      function calculateFountainTotal(tierGuests, chocolateType){
+        const gRaw = Number(tierGuests || state.guests || 0);
+        const g = Math.max(30, Math.min(350, gRaw));
+        const hours = hoursFromGuests(g);
+        const attendants = employeesForGuests(g);
+        const totalHours = 1.5 + hours;
+        const labor = attendants * 18 * totalHours;
+        const toppings = g <= 75 ? 100 : g <= 125 ? 150 : 200;
+        const gas = 0;
+        const promo = 0;
+
+        const baseTarget = g <= 75 ? 350 : g <= 125 ? 450 : 550;
+        const premium = (chocolateType === 'white' || chocolateType === 'mixed') ? 50 : 0;
+        const targetWithPremium = baseTarget + premium;
+        const desiredPreTax = targetWithPremium / 1.0825;
+
+        const fixedCosts = labor + toppings + gas + promo;
+        const profitRaw = desiredPreTax - fixedCosts;
+        const profit = Math.max(150, Math.min(225, profitRaw));
+
+        const subtotal = fixedCosts + profit;
+        const totalWithTax = subtotal * 1.0825;
+        return roundToNearest5(totalWithTax);
+      }
+
+      function fountainPrice(){
+        if(!state.fountainEnabled) return 0;
+        const guestsForTier = Math.max(state.guests || 0, Number(state.fountainSize || 0));
+        return calculateFountainTotal(guestsForTier, state.fountainType);
       }
 
       function roundToNearest5(n){ return Math.round((n || 0) / 5) * 5; }
@@ -1814,8 +1978,14 @@
       function updateSecondShownPrice(){
         const val = secondPrice();
         if(state.secondEnabled){
+          const g = clampGuests(state.secondGuests || state.guests || 0);
+          const h = hoursFromGuests(g);
           const guestLabel = state.lang === 'es' ? 'invitados' : 'guests';
-          elSecondPrice.textContent = `${fmt(val)} • ${state.guests} ${guestLabel} • ${hoursLabel(state.hours)}`;
+          const hoursText = hoursLabel(h);
+          const countLine = state.lang === 'es' ? `Invitados: ${g} personas` : `Guests: ${g} people`;
+
+          if (secondGuestCountLabel) secondGuestCountLabel.textContent = countLine;
+          elSecondPrice.textContent = `${fmt(val)} • ${g} ${guestLabel} • ${hoursText}`;
         }else{
           elSecondPrice.textContent = t('summary_second_none');
         }
@@ -1980,7 +2150,10 @@
         const addonsList = $('[data-sum-addons]');
         addonsList.innerHTML = '';
         const items = [];
-        if (state.secondEnabled) items.push(`${t('addon_second_title')} • ${t(`bar_${state.secondBar}_title`) || state.secondBar} (${pkgLabelFor(state.secondSize)}) — ${fmt(secondTotal)}`);
+        const secondGuests = clampGuests(state.secondGuests || state.guests || 0);
+        const secondHours = hoursFromGuests(secondGuests);
+        const secondLabel = `${secondGuests} ${guestLabel} • ${hoursLabel(secondHours)}`;
+        if (state.secondEnabled) items.push(`${t('addon_second_title')} • ${t(`bar_${state.secondBar}_title`) || state.secondBar} (${secondLabel}) — ${fmt(secondTotal)}`);
         if (state.fountainEnabled) items.push(`${t('addon_fountain_title')} (${state.fountainSize}) — ${fmt(fountainTotal)}`);
         if (!items.length){
           const li=document.createElement('li');
@@ -2003,7 +2176,11 @@
           label: `${state.guests} guests • ${state.hours} hrs`
         };
         return {
-          pkg,
+          pkg: JSON.stringify(pkg),
+          pkg_code: String(pkg.code),
+          pkg_guests: String(pkg.guests),
+          pkg_hours: String(pkg.hours),
+          pkg_label: String(pkg.label),
           guests: state.guests,
           hours: state.hours,
           mainBar: state.mainBar,
@@ -2014,7 +2191,7 @@
           lang: state.lang,
           secondEnabled: state.secondEnabled,
           secondBar: state.secondBar,
-          secondSize: state.secondSize,
+          secondGuests: state.secondGuests,
           fountainEnabled: state.fountainEnabled,
           fountainSize: state.fountainSize,
           fountainType: state.fountainType,
