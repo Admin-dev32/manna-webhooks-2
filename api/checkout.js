@@ -90,6 +90,9 @@ export default async function handler(req, res){
 
   try{
     const pb = req.body || {};
+    pb.pkg = String(pb.pkg || '');
+    pb.mainBar = String(pb.mainBar || '');
+    pb.payMode = String(pb.payMode || '');
 
     // Validaciones mínimas
     if (!pb.pkg || !pb.mainBar || !pb.payMode) {
