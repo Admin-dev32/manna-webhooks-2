@@ -1,86 +1,107 @@
 // /api/ai-checkout.js
 // Proxy endpoint for ChatGPT or external AI clients
-// Safely relays requests to your main /api/checkout route
+// Relays requests to your main /api/checkout route
+// 🔓 Validación ligera: SOLO pkg, mainBar y payMode.
 
 export const config = { runtime: "nodejs" };
 
-const REQUIRED_FIELDS = [
-  "pkg",       // rango de invitados / paquete
-  "mainBar",   // tipo de barra principal
-  "payMode",   // "deposit" o "full"
-  "fullName",  // nombre completo del cliente
-  "email",     // correo del cliente
-  "dateISO",   // fecha del evento (YYYY-MM-DD)
-  "startISO",  // hora de inicio en ISO (ej. 2026-03-29T20:30:00-08:00)
-  "venue",     // ciudad / dirección del evento
-  "guests"     // número aproximado de invitados
-];
+// Base del backend real (puedes cambiarla por env var)
+const CHECKOUT_BASE =
+  process.env.MANNA_CHECKOUT_BASE || "https://manna-webhooks-2.vercel.app";
+
+const REQUIRED_CORE_FIELDS = ["pkg", "mainBar", "payMode"];
 
 export default async function handler(req, res) {
-  // Accept only POST requests from ChatGPT
+  // Solo POST (opcionalmente podrías aceptar OPTIONS para CORS)
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    // Vercel normalmente ya parsea JSON; por si acaso, soportamos string también
+    // Vercel ya parsea JSON, pero soportamos string por si llega crudo
     const rawBody = req.body || {};
-    const body =
-      typeof rawBody === "string"
-        ? JSON.parse(rawBody || "{}")
-        : rawBody;
+    let body;
 
-    // 🔒 Validación estricta de campos obligatorios
-    const missing = REQUIRED_FIELDS.filter((field) => {
+    try {
+      body =
+        typeof rawBody === "string" ? JSON.parse(rawBody || "{}") : rawBody;
+    } catch (parseErr) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid JSON body",
+        detail: String(parseErr.message || parseErr),
+      });
+    }
+
+    // ✅ Validación LIGERA (solo campos core)
+    const missing = REQUIRED_CORE_FIELDS.filter((field) => {
       const value = body[field];
-      // Consideramos vacío: undefined, null, "", 0 invitados, etc.
       return (
         value === undefined ||
         value === null ||
-        (typeof value === "string" && value.trim() === "") ||
-        (field === "guests" && (!Number.isFinite(Number(value)) || Number(value) <= 0))
+        (typeof value === "string" && value.trim() === "")
       );
     });
 
     if (missing.length > 0) {
       return res.status(400).json({
         success: false,
-        error: "Missing required fields",
-        missing
+        error: "Missing required core fields",
+        missing,
       });
     }
 
-    // Forward the same payload to your real /api/checkout
-    const response = await fetch(
-      "https://manna-webhooks-2.vercel.app/api/checkout",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      }
-    );
+    // Construimos la URL real de checkout por si cambias base
+    const upstreamUrl = new URL("/api/checkout", CHECKOUT_BASE).toString();
 
-    // If checkout returns a URL, relay it back to ChatGPT
+    // 🔁 Reenviar el payload tal cual a tu /api/checkout real
+    const response = await fetch(upstreamUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    // Leemos el cuerpo UNA sola vez y luego intentamos parsear JSON
+    let upstreamText = "";
+    try {
+      upstreamText = await response.text();
+    } catch {
+      upstreamText = "";
+    }
+
+    let upstreamJson = null;
+    try {
+      upstreamJson = upstreamText ? JSON.parse(upstreamText) : null;
+    } catch {
+      upstreamJson = null;
+    }
+
     if (response.ok) {
-      const data = await response.json();
+      const checkoutUrl =
+        (upstreamJson && upstreamJson.url) || upstreamJson?.checkout_url || null;
+
       return res.status(200).json({
         success: true,
-        checkout_url: data.url || null
+        checkout_url: checkoutUrl,
+        // Opcionalmente eco del cuerpo por si tu GPT quiere leer más info
+        upstream: upstreamJson || upstreamText || null,
       });
     } else {
-      const errorText = await response.text();
       return res.status(response.status).json({
         success: false,
         error: "Upstream checkout error",
-        detail: errorText
+        detail:
+          (upstreamJson && (upstreamJson.detail || upstreamJson.error)) ||
+          upstreamText ||
+          null,
       });
     }
   } catch (err) {
     console.error("AI Checkout error:", err);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: "Internal AI checkout proxy error",
-      detail: err.message
+      detail: err.message || String(err),
     });
   }
 }
