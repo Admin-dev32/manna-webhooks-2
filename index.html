@@ -807,6 +807,35 @@
       .controls { flex-wrap:wrap; }
       .lang-toggle { align-self:flex-end; }
     }
+      /* 👇 Refuerzo visual SOLO para el slider de invitados */
+    #manna-booking-steps .guest-range input[type="range"] {
+      background: linear-gradient(
+        90deg,
+        rgba(249,168,212,0.65),
+        rgba(192,132,252,0.9)
+      );
+      height: 12px;
+      border-radius: 999px;
+    }
+    
+    /* Thumb bien visible */
+    #manna-booking-steps .guest-range input[type="range"]::-webkit-slider-thumb,
+    #manna-booking-steps .guest-range input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg,#f9a8d4,#c084fc);
+      border: 2px solid #ffffff;
+      box-shadow:
+        0 0 0 3px rgba(255,255,255,0.9),
+        0 0 0 6px rgba(192,132,252,0.6),
+        0 6px 14px rgba(15,23,42,0.35);
+    }
+    
+    /* Por si acaso algún estilo lo dejó transparente */
+    #guestRange {
+      opacity: 1;
+    }
   </style>
   <div class="wrap">
     <div class="header">
@@ -2065,6 +2094,9 @@
           hours: state.hours,
           mainBar: state.mainBar,
           payMode: state.pay,
+          total: totals.total,
+          dueNow: totals.dueNow,
+          tax: 8.25,
           lang: state.lang,
           pkg: pkgCode,
           secondEnabled: state.secondEnabled,

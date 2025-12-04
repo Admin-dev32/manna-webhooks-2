@@ -1,5 +1,6 @@
 // /api/ai-custom-payment.js
 // Crea un Stripe Checkout de MONTO LIBRE para usarlo desde ChatGPT / AI.
+// 🔓 Validación ligera: SOLO se exige un "amount" válido (> 0).
 
 export const config = { runtime: 'nodejs' };
 
@@ -7,18 +8,6 @@ import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-06-20',
 });
-
-// Campos que SIEMPRE queremos tener antes de cobrar
-const REQUIRED_FIELDS = [
-  'amount',    // monto a cobrar
-  'fullName',  // nombre del cliente
-  'email',     // correo
-  'dateISO',   // fecha del evento
-  'startISO',  // hora de inicio
-  'venue',     // ciudad / dirección
-  'guests',    // número de invitados
-  'mainBar'    // barra principal relacionada a este pago
-];
 
 function usd(n) {
   return Math.round(Number(n || 0) * 100); // dollars → cents
@@ -69,33 +58,14 @@ export default async function handler(req, res) {
       bundleLabel
     } = body;
 
-    // 🔒 Validación estricta de campos requeridos
-    const missing = REQUIRED_FIELDS.filter((field) => {
-      const value = body[field];
-
-      if (field === 'amount') {
-        return !Number.isFinite(Number(value)) || Number(value) <= 0;
-      }
-      if (field === 'guests') {
-        return !Number.isFinite(Number(value)) || Number(value) <= 0;
-      }
-
-      return (
-        value === undefined ||
-        value === null ||
-        (typeof value === 'string' && value.trim() === '')
-      );
-    });
-
-    if (missing.length > 0) {
+    // ✅ ÚNICA validación obligatoria: amount > 0
+    const numAmount = Number(amount);
+    if (!Number.isFinite(numAmount) || numAmount <= 0) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields',
-        missing
+        error: 'Missing or invalid "amount" (must be > 0)'
       });
     }
-
-    const numAmount = Number(amount);
 
     const BASE_URL = (process.env.PUBLIC_URL || 'https://mannasnackbars.com')
       .replace(/\/+$/, '');
@@ -112,7 +82,7 @@ export default async function handler(req, res) {
             product_data: {
               name:
                 description ||
-                `Custom payment — ${fullName} — ${mainBar} — ~${guests} guests`
+                `Custom payment — ${fullName || 'Manna Snack Bars'}`
             }
           },
           quantity: 1
@@ -129,11 +99,12 @@ export default async function handler(req, res) {
         email: email || '',
         phone: phone || '',
 
-        // Datos de evento (estrictos)
+        // Datos de evento (OPCIONALES ahora)
         dateISO: dateISO || '',
         startISO: startISO || '',
         venue: venue || '',
-        guests: String(guests || ''),
+        guests: guests !== undefined ? String(guests) : '',
+
         mainBar: mainBar || '',
 
         // Info comercial opcional
