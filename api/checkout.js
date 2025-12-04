@@ -32,6 +32,16 @@ const BAR_META = {
 function usd(n){ return Math.round(n * 100); } // dollars → cents
 
 function computeTotals(pb){
+  if (pb && pb.total != null && pb.dueNow != null) {
+    const t = Number(pb.total) || 0;
+    const d = Number(pb.dueNow) || 0;
+    return {
+      total: t,
+      dueNow: d,
+      paySavings: pb.payMode === 'full' ? FULL_FLAT_OFF : 0
+    };
+  }
+
   const base0 = BASE_PRICES[pb.pkg] || 0;
   const addMain = (BAR_META[pb.mainBar]?.priceAdd) || 0;
   const base = base0 + addMain;
@@ -120,28 +130,28 @@ export default async function handler(req, res){
       cancel_url: cancelUrl,
       metadata: {
         // data needed for webhook -> Google Calendar
-        pkg: pb.pkg,
-        mainBar: pb.mainBar,
-        payMode: pb.payMode,
-        lang: pb.lang || 'en',
+        pkg: String(pb.pkg || ''),
+        mainBar: String(pb.mainBar || ''),
+        payMode: String(pb.payMode || ''),
+        lang: String(pb.lang || 'en'),
         secondEnabled: String(!!pb.secondEnabled),
-        secondBar: pb.secondBar || '',
-        secondSize: pb.secondSize || '',
+        secondBar: String(pb.secondBar || ''),
+        secondSize: String(pb.secondSize || ''),
         fountainEnabled: String(!!pb.fountainEnabled),
-        fountainSize: pb.fountainSize || '',
-        fountainType: pb.fountainType || '',
+        fountainSize: String(pb.fountainSize || ''),
+        fountainType: String(pb.fountainType || ''),
         total: String(total),
         dueNow: String(dueNow),
 
         // customer / booking
-        dateISO: pb.dateISO || '',
-        startISO: pb.startISO || '',
-        fullName: pb.fullName || pb.name || '',
-        email: pb.email || '',
-        phone: pb.phone || '',
-        venue: pb.venue || '',
-        setup: pb.setup || '',
-        power: pb.power || '',
+        dateISO: String(pb.dateISO || ''),
+        startISO: String(pb.startISO || ''),
+        fullName: String(pb.fullName || pb.name || ''),
+        email: String(pb.email || ''),
+        phone: String(pb.phone || ''),
+        venue: String(pb.venue || ''),
+        setup: String(pb.setup || ''),
+        power: String(pb.power || ''),
         hours: String(pkgToHours(pb.pkg)) // used by calendar block length
       }
     });
