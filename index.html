@@ -1779,55 +1779,54 @@
 
       function roundToNearest5(n){ return Math.round((n || 0) / 5) * 5; }
 
-      function profitForGuests(count) {
-        const minGuests = 30;
-        const maxGuests = 350;
-        const minProfit = 150;
-        const maxProfit = 225;
+      const STANDARD_PRICE_POINTS = [
+        { guests: 30, total: 380 },
+        { guests: 50, total: 390 },
+        { guests: 90, total: 400 },
+        { guests: 110, total: 425 },
+        { guests: 130, total: 475 },
+        { guests: 150, total: 535 }
+      ];
 
-        const g = Math.max(minGuests, Math.min(maxGuests, count || 0));
-        const pct = (g - minGuests) / (maxGuests - minGuests);
-        const ideal = minProfit + pct * (maxProfit - minProfit);
+      function priceFromPoints(guests, points) {
+        const g = clampGuests(guests || 0);
+        if (g <= points[0].guests) return points[0].total;
 
-        return Math.max(minProfit, Math.min(maxProfit, ideal));
-      }
+        for (let i = 0; i < points.length - 1; i++) {
+          const a = points[i];
+          const b = points[i + 1];
+          if (g === a.guests) return a.total;
+          if (g === b.guests) return b.total;
+          if (g > a.guests && g < b.guests) {
+            const t = (g - a.guests) / (b.guests - a.guests);
+            const raw = a.total + t * (b.total - a.total);
+            return roundToNearest5(raw);
+          }
+        }
 
-      function secondDiscountForGuests(count) {
-        const minGuests = 40;
-        const maxGuests = 340;
-        const minDisc = 20;
-        const maxDisc = 75;
-
-        const g = Math.max(minGuests, Math.min(maxGuests, Number(count) || 0));
-        const pct = (g - minGuests) / (maxGuests - minGuests);
-        const raw = minDisc + pct * (maxDisc - minDisc);
-
+        const last = points[points.length - 1];
+        const prev = points[points.length - 2];
+        const slope = (last.total - prev.total) / (last.guests - prev.guests);
+        const raw = last.total + slope * (g - last.guests);
         return roundToNearest5(raw);
       }
 
-      function calculateDynamicTotal(guests, barType='standard') {
+      function calculateDynamicTotal(guests, barType = 'standard') {
         const g = clampGuests(guests || state.guests || 0);
-        const hours = hoursFromGuests(g);
+        let total = priceFromPoints(g, STANDARD_PRICE_POINTS);
 
-        const attendants = employeesForGuests(g);
-        const totalHours = 1.5 + hours;
-        const labor = attendants * 18 * totalHours;
-        const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
-        const gas = 20;
-        const promo = 30;
-        const profit = profitForGuests(g);
+        if (barType === 'tostiloco') total += 50;
 
-        let subtotal = labor + toppings + gas + promo + profit;
+        total = roundToNearest5(total);
+        return { total, perGuest: total / g };
+      }
 
-        if (barType === 'tostiloco') {
-          subtotal += (g * 0.5);
-        }
-
-        const totalWithTax = subtotal * 1.0825;
-        const total = Math.round(totalWithTax / 5) * 5;
-        const perGuest = total / g;
-
-        return { total, perGuest };
+      function secondDiscountForGuests(count, baseTotal) {
+        const g = Math.max(40, Math.min(340, Number(count) || 0));
+        const pct = g <= 150 ? 0.15 : 0.18;
+        let disc = baseTotal * pct;
+        disc = Math.max(30, Math.min(150, disc));
+        return roundToNearest5(disc);
       }
 
       function mainBarCalc(){
@@ -1847,10 +1846,8 @@
         const type = state.secondBar === 'tostiloco' ? 'tostiloco' : 'standard';
 
         const base = calculateDynamicTotal(g, type).total;
-        const disc = secondDiscountForGuests(g);
-        const discounted = Math.max(0, base - disc);
-
-        return roundToNearest5(discounted);
+        const disc = secondDiscountForGuests(g, base);
+        return roundToNearest5(Math.max(0, base - disc));
       }
 
       function calculateFountainTotal(tierGuests, chocolateType){
@@ -2085,34 +2082,35 @@
 
       function readyPayload(){
         const totals = compute();
-        const pkgCode = classifyPkgFromGuests(state.guests || 0);
-        const secondPkgCode = classifyPkgFromGuests(state.secondGuests || state.guests || 0);
+        const guests = clampGuests(state.guests || 0);
+        const hours = state.hours;
+        const pkgCode = classifyPkgFromGuests(guests);
+        const secondGuests = clampGuests(state.secondGuests || guests || 0);
+        const secondPkgCode = classifyPkgFromGuests(secondGuests);
         return {
           total: totals.total,
           dueNow: totals.dueNow,
-          guests: state.guests,
-          hours: state.hours,
-          mainBar: state.mainBar,
-          payMode: state.pay,
-          total: totals.total,
-          dueNow: totals.dueNow,
-          tax: 8.25,
+          guests,
+          hours,
+          mainBar: String(state.mainBar || ''),
+          payMode: String(state.pay || ''),
           lang: state.lang,
-          pkg: pkgCode,
-          secondEnabled: state.secondEnabled,
-          secondBar: state.secondBar,
-          secondSize: secondPkgCode,
-          fountainEnabled: state.fountainEnabled,
-          fountainSize: state.fountainSize,
-          fountainType: state.fountainType,
-          dateISO: state.dateISO,
-          startISO: state.startISO,
-          fullName: state.name,
-          email: state.email,
-          phone: state.phone,
-          venue: state.venue,
-          setup: state.setup,
-          power: state.power
+          pkg: String(pkgCode),
+          secondEnabled: !!state.secondEnabled,
+          secondBar: String(state.secondBar || ''),
+          secondSize: String(secondPkgCode),
+          secondGuests,
+          fountainEnabled: !!state.fountainEnabled,
+          fountainSize: String(state.fountainSize || ''),
+          fountainType: String(state.fountainType || ''),
+          dateISO: state.dateISO || '',
+          startISO: state.startISO || '',
+          fullName: state.name || '',
+          email: state.email || '',
+          phone: state.phone || '',
+          venue: state.venue || '',
+          setup: state.setup || '',
+          power: state.power || ''
         };
       }
 
