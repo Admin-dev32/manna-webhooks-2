@@ -246,7 +246,9 @@
 
     .choice input {
       position:absolute;
-      inset:0;
+      width:1px;
+      height:1px;
+      inset:auto;
       opacity:0;
       cursor:pointer;
     }
@@ -262,6 +264,96 @@
       gap:8px;
       transition:border-color .2s ease, box-shadow .2s ease, background .2s ease;
       min-height:100%;
+      position:relative;
+      z-index:1;
+    }
+
+    input[type="range"] {
+      -webkit-appearance:none;
+      appearance:none;
+      width:100%;
+      height:10px;
+      border-radius:999px;
+      background:linear-gradient(90deg,rgba(249,168,212,.2),rgba(192,132,252,.25));
+      outline:none;
+      box-shadow:0 6px 14px rgba(192,132,252,.18) inset;
+      position:relative;
+      z-index:2;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height:10px;
+      border-radius:999px;
+      background:linear-gradient(90deg,rgba(249,168,212,.24),rgba(192,132,252,.28));
+      box-shadow:0 4px 10px rgba(192,132,252,.12) inset;
+    }
+
+    input[type="range"]::-moz-range-track {
+      height:10px;
+      border-radius:999px;
+      background:linear-gradient(90deg,rgba(249,168,212,.24),rgba(192,132,252,.28));
+      box-shadow:0 4px 10px rgba(192,132,252,.12) inset;
+    }
+
+    input[type="range"]:focus-visible {
+      outline:none;
+      box-shadow:0 0 0 6px rgba(192,132,252,.18);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance:none;
+      appearance:none;
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-strong));
+      box-shadow:0 6px 14px rgba(192,132,252,.35);
+      border:2px solid #fff;
+      cursor:pointer;
+      transition:box-shadow .2s ease, transform .2s ease;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-strong));
+      box-shadow:0 6px 14px rgba(192,132,252,.35);
+      border:2px solid #fff;
+      cursor:pointer;
+      transition:box-shadow .2s ease, transform .2s ease;
+    }
+
+    input[type="range"]:hover::-webkit-slider-thumb,
+    input[type="range"]:focus-visible::-webkit-slider-thumb,
+    input[type="range"]:hover::-moz-range-thumb,
+    input[type="range"]:focus-visible::-moz-range-thumb {
+      box-shadow:0 8px 18px rgba(192,132,252,.45);
+      transform:translateY(-1px);
+    }
+
+    #manna-booking-steps .guest-range input[type="range"] {
+      background:linear-gradient(90deg,rgba(249,168,212,0.65),rgba(192,132,252,0.9));
+      height:12px;
+      border-radius:999px;
+      box-shadow:0 0 0 2px rgba(255,255,255,0.6), 0 8px 18px rgba(192,132,252,0.28) inset;
+    }
+
+    #manna-booking-steps .guest-range input[type="range"]::-webkit-slider-runnable-track,
+    #manna-booking-steps .guest-range input[type="range"]::-moz-range-track {
+      background:linear-gradient(90deg,rgba(249,168,212,0.75),rgba(192,132,252,0.95));
+      height:12px;
+      border-radius:999px;
+    }
+
+    #manna-booking-steps .guest-range input[type="range"]::-webkit-slider-thumb,
+    #manna-booking-steps .guest-range input[type="range"]::-moz-range-thumb {
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      background:linear-gradient(135deg,#f9a8d4,#c084fc);
+      border:2px solid #ffffff;
+      box-shadow:0 0 0 3px rgba(255,255,255,0.9), 0 0 0 6px rgba(192,132,252,0.6), 0 6px 14px rgba(15,23,42,0.35);
     }
 
     .choice .title { font-weight:700; font-size:17px; }
@@ -499,9 +591,9 @@
 
     .panel h3 { margin:0 0 12px; font-size:17px; }
     .summary-list { display:flex; flex-direction:column; gap:12px; }
-    .summary-row { display:flex; justify-content:space-between; gap:12px; font-size:14px; align-items:flex-start; }
-    .summary-row .label { color:var(--muted); font-weight:600; word-break:break-word; overflow-wrap:anywhere; min-width:0; }
-    .summary-row .value { font-weight:700; text-align:right; word-break:break-word; overflow-wrap:anywhere; min-width:0; }
+    .summary-row { display:flex; justify-content:space-between; gap:12px; font-size:14px; align-items:flex-start; flex-wrap:wrap; }
+    .summary-row .label { color:var(--muted); font-weight:600; min-width:140px; flex:0 0 140px; text-align:left; word-break:normal; white-space:normal; overflow-wrap:anywhere; }
+    .summary-row .value { font-weight:700; text-align:right; flex:1 1 auto; word-break:normal; white-space:normal; overflow-wrap:anywhere; }
 
     .addons ul { margin:0; padding-left:18px; display:flex; flex-direction:column; gap:6px; }
     .addons li { word-break:break-word; }
@@ -673,9 +765,9 @@
 
     .panel h3 { margin:0 0 10px; font-size:17px; }
     .summary-list { display:grid; gap:10px; }
-    .summary-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; font-size:14px; align-items:flex-start; }
-    .summary-row .label { color:var(--muted); font-weight:600; word-break:break-word; overflow-wrap:anywhere; }
-    .summary-row .value { font-weight:700; text-align:right; word-break:break-word; overflow-wrap:anywhere; }
+    .summary-row { display:flex; justify-content:space-between; gap:10px; font-size:14px; align-items:flex-start; flex-wrap:wrap; }
+    .summary-row .label { color:var(--muted); font-weight:600; min-width:130px; flex:0 0 130px; text-align:left; word-break:normal; white-space:normal; overflow-wrap:anywhere; }
+    .summary-row .value { font-weight:700; text-align:right; flex:1 1 auto; word-break:normal; white-space:normal; overflow-wrap:anywhere; }
 
     .addons ul { margin:0; padding-left:18px; }
     .addons li { margin-bottom:4px; word-break:break-word; }
@@ -755,7 +847,7 @@
                 <h2 data-i18n="step1Title">Choose your main bar</h2>
                 <p class="step-note" data-i18n="step1Note">Pick your hero bar to start.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
 
             <div class="which-bars" data-choices="bar" aria-label="Pick your main bar">
@@ -826,30 +918,23 @@
                 <h2 data-i18n="step2Title">Choose a package</h2>
                 <p class="step-note" data-i18n="step2Note">Match your guest count & hours.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
             <div class="add-on-list" data-choices="pkg">
-              <label class="choice">
-                <input type="radio" name="pkg" value="50-150-5h" data-hours="2">
+              <div class="choice">
                 <div class="choice-body">
-                  <div class="label"><span data-i18n="pkg_small_title">50–150 guests</span><span class="badge" data-i18n="pkg_small_hours">2 hrs live</span></div>
+                  <div class="label"><span data-i18n="pkg_small_title" data-guest-title>80 guests</span><span class="badge" data-hours-badge>2 hrs live</span></div>
                   <div class="desc" data-i18n="pkg_small_desc">Perfect for birthdays, showers, and intimate events.</div>
+                  <div class="guest-range" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px;">
+                    <input type="range" id="guestRange" min="30" max="350" step="20" value="80" data-guest-range style="flex:1 1 220px;">
+                    <div class="input" style="flex:0 0 120px;">
+                      <input type="number" id="guestInput" min="30" max="350" step="20" value="80" data-guest-input>
+                    </div>
+                  </div>
+                  <p class="desc" data-guest-count>Guests: 80 people</p>
+                  <p class="desc" data-per-guest>Price per guest: $0.00</p>
                 </div>
-              </label>
-              <label class="choice">
-                <input type="radio" name="pkg" value="150-250-5h" data-hours="2.5">
-                <div class="choice-body">
-                  <div class="label"><span data-i18n="pkg_medium_title">150–250 guests</span><span class="badge" data-i18n="pkg_medium_hours">2.5 hrs live</span></div>
-                  <div class="desc" data-i18n="pkg_medium_desc">Our most popular package for weddings & corporate events.</div>
-                </div>
-              </label>
-              <label class="choice">
-                <input type="radio" name="pkg" value="250-350-6h" data-hours="3">
-                <div class="choice-body">
-                  <div class="label"><span data-i18n="pkg_large_title">250–350 guests</span><span class="badge" data-i18n="pkg_large_hours">3 hrs live</span></div>
-                  <div class="desc" data-i18n="pkg_large_desc">Extended service and staffing for high-volume celebrations.</div>
-                </div>
-              </label>
+              </div>
             </div>
           </div>
         </div>
@@ -863,7 +948,7 @@
                 <h2 data-i18n="step3Title">Optional add-ons</h2>
                 <p class="step-note" data-i18n="step3Note">Sweeten the experience with extras.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
 
             <div class="add-on-list">
@@ -892,11 +977,28 @@
                   </div>
                   <div class="field">
                     <label data-i18n="addon_second_size_label">Guest count</label>
-                    <select data-second-size>
-                      <option value="50-150-5h" data-i18n="pkg_small_title">50–150 guests</option>
-                      <option value="150-250-5h" data-i18n="pkg_medium_title">150–250 guests</option>
-                      <option value="250-350-6h" data-i18n="pkg_large_title">250–350 guests</option>
-                    </select>
+                    <div class="guest-range" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:8px;">
+                      <input
+                        type="range"
+                        min="40"
+                        max="340"
+                        step="20"
+                        value="80"
+                        data-second-guest-range
+                        style="flex:1 1 220px;"
+                      >
+                      <div class="input" style="flex:0 0 120px;">
+                        <input
+                          type="number"
+                          min="40"
+                          max="340"
+                          step="20"
+                          value="80"
+                          data-second-guest-input
+                        >
+                      </div>
+                    </div>
+                    <p class="desc" data-second-guest-count>Guests: 80 people</p>
                   </div>
                 </div>
               </div>
@@ -945,7 +1047,7 @@
                 <h2 data-i18n="step4Title">Pick date & time</h2>
                 <p class="step-note" data-i18n="step4Note">Calendar blocks 1h setup + live service + 1h cleanup.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
 
             <div class="calendar-wrap">
@@ -974,7 +1076,7 @@
                 <h2 data-i18n="step5Title">Your info & pay</h2>
                 <p class="step-note" data-i18n="step5Note">We’ll only use this info for your booking and calendar invite.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
 
             <div class="form-grid">
@@ -1047,7 +1149,7 @@
                 <h2 data-i18n="step6Title">Review & total</h2>
                 <p class="step-note" data-i18n="step6Note">Confirm everything below before continuing to Stripe Checkout.</p>
               </div>
-              <div class="running" data-running>Current total: $0 • Due now: $0</div>
+              <div class="running" data-running>Total $0 (Tax included)</div>
             </div>
 
             <div class="summary-grid">
@@ -1102,16 +1204,13 @@
       const TOTAL_STEPS = 6;
       const localeMap = { en: 'en-US', es: 'es-MX' };
 
-      const BASE_PRICES = { "50-150-5h": 550, "150-250-5h": 700, "250-350-6h": 900 };
       const BAR_META = {
         pancake: { title: '🥞 Mini Pancake', add: 0 },
         esquites: { title: '🌽 Esquites', add: 0 },
         maruchan: { title: '🍜 Maruchan', add: 0 },
-        tostiloco: { title: '🌶️ Tostiloco (Premium +$50)', add: 50 },
+        tostiloco: { title: '🌶️ Tostiloco (Premium)', add: 0 },
         snack: { title: '🍭 Manna Snack Bar — “La Clásica”', add: 0 }
       };
-      const SECOND_DISCOUNT = { "50-150-5h": 50, "150-250-5h": 75, "250-350-6h": 100 };
-      const FOUNTAIN_PRICE = { "50": 350, "100": 450, "150": 550 };
       const FULL_FLAT_OFF = 20;
 
       const translations = {
@@ -1124,7 +1223,9 @@
           actionPay: 'Pay now',
           actionPayNow: 'Confirm & pay 💳',
           errorIncomplete: 'Please complete all required fields.',
-          runningTotal: '💸 Current total: {total} • Due now: {due}',
+          runningTotal: 'Total {total} (Tax included)',
+          perGuest: 'Price per guest: {price}',
+          guestCount: 'Guests: {count} people',
           step1Eyebrow: 'Step 1',
           step1Title: '🍫 Choose your main bar',
           step1Note: 'Mix & match your favorite flavors.',
@@ -1248,7 +1349,9 @@
           actionPay: 'Pagar ahora',
           actionPayNow: 'Confirmar y pagar 💳',
           errorIncomplete: 'Completa todos los campos obligatorios.',
-          runningTotal: '💸 Total actual: {total} • Pagar hoy: {due}',
+          runningTotal: 'Total {total} (Impuestos incluidos)',
+          perGuest: 'Precio por invitado: {price}',
+          guestCount: 'Invitados: {count} personas',
           step1Eyebrow: 'Paso 1',
           step1Title: '🍫 Elige tu barra principal',
           step1Note: 'Combina tus sabores favoritos.',
@@ -1371,11 +1474,11 @@
       const state = {
         step: 0,
         mainBar: '',
-        pkg: '',
-        hours: 0,
+        guests: 80,
+        hours: 2,
+        secondGuests: 80,
         secondEnabled: false,
         secondBar: 'pancake',
-        secondSize: '50-150-5h',
         fountainEnabled: false,
         fountainSize: '50',
         fountainType: 'dark',
@@ -1405,6 +1508,8 @@
         $$('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
         $$('[data-lang]').forEach(btn => btn.classList.toggle('is-active', btn.dataset.lang === state.lang));
         setNextLabels();
+        updateHoursBadge();
+        updateGuestTitle();
         updateSecondShownPrice();
         updateRunningTotal();
         renderCalendar();
@@ -1436,7 +1541,7 @@
 
       function readyToPay(){
         const emailOK = /.+@.+\..+/.test(state.email);
-        return !!(state.pkg && state.mainBar && state.dateISO && state.startISO && state.name && emailOK && state.venue && state.setup && state.power && state.policy);
+        return !!(state.guests && state.mainBar && state.pay && state.dateISO && state.startISO && state.name && emailOK && state.venue && state.setup && state.power && state.policy);
       }
 
       function infoComplete(){
@@ -1446,7 +1551,7 @@
 
       function canNext(){
         if (state.step === 0) return !!state.mainBar;
-        if (state.step === 1) return !!state.pkg;
+        if (state.step === 1) return !!state.guests;
         if (state.step === 2) return true;
         if (state.step === 3) return !!(state.dateISO && state.startISO);
         if (state.step === 4) return infoComplete();
@@ -1501,44 +1606,255 @@
         });
       });
 
-      $$('[data-choices="pkg"] input[name="pkg"]').forEach(inp => {
-        inp.addEventListener('change', () => {
-          state.pkg = inp.value;
-          state.hours = parseFloat(inp.dataset.hours || '0') || 0;
-          updateSecondShownPrice();
-          updateRunningTotal();
-          renderCalendar();
-          loadSlotsIfDate();
-          updateControls();
-          renderSummary();
+      const guestRangeInput = $('[data-guest-range]');
+      const guestNumberInput = $('[data-guest-input]');
+      const range = document.getElementById('guestRange');
+      const input = document.getElementById('guestInput');
+      const hoursBadge = $('[data-hours-badge]');
+      const guestTitle = $('[data-guest-title]');
+      const secondGuestRange = $('[data-second-guest-range]');
+      const secondGuestInput = $('[data-second-guest-input]');
+      const secondGuestCountLabel = $('[data-second-guest-count]');
+
+      function clampGuests(val){
+        const min = 30;
+        const max = 350;
+        const num = Number(val) || 0;
+        const clamped = Math.min(max, Math.max(min, num));
+        const snapped = Math.round((clamped - min) / 20) * 20 + min;
+        return Math.min(max, Math.max(min, snapped));
+      }
+
+      function hoursFromGuests(g){
+        if (g <= 150) return 2;
+        if (g <= 250) return 2.5;
+        return 3;
+      }
+
+      function hoursLabel(h){
+        if (h <= 2) return t('pkg_small_hours');
+        if (h <= 2.5) return t('pkg_medium_hours');
+        return t('pkg_large_hours');
+      }
+
+      function employeesForGuests(g) {
+        const guests = g || state.guests || 0;
+        return guests >= 150 ? 2 : 1;
+      }
+
+      function updateHoursBadge(){
+        if (hoursBadge) hoursBadge.textContent = hoursLabel(state.hours);
+      }
+
+      function updateGuestTitle(){
+        if (!guestTitle) return;
+        const label = state.lang === 'es' ? 'invitados' : 'guests';
+        guestTitle.textContent = `${state.guests || 0} ${label}`;
+      }
+
+      function syncGuests(val){
+        const g = clampGuests(val);
+        state.guests = g;
+        state.hours = hoursFromGuests(g);
+        if (guestRangeInput && guestRangeInput.value !== String(g)) guestRangeInput.value = g;
+        if (guestNumberInput && guestNumberInput.value !== String(g)) guestNumberInput.value = g;
+        updateHoursBadge();
+        updateGuestTitle();
+        updateSecondShownPrice();
+        updateRunningTotal();
+        renderSummary();
+        renderCalendar();
+        loadSlotsIfDate();
+        updateControls();
+      }
+
+      function updateDynamicPrice(val){
+        const nextVal = val ?? (guestRangeInput ? guestRangeInput.value : state.guests);
+        syncGuests(nextVal);
+      }
+
+      function updateSecondGuests(val) {
+        const g = clampGuests(val);
+        state.secondGuests = g;
+
+        if (secondGuestRange && secondGuestRange.value !== String(g)) {
+          secondGuestRange.value = g;
+        }
+        if (secondGuestInput && secondGuestInput.value !== String(g)) {
+          secondGuestInput.value = g;
+        }
+
+        const label = state.lang === 'es'
+          ? `Invitados: ${g} personas`
+          : `Guests: ${g} people`;
+
+        if (secondGuestCountLabel) {
+          secondGuestCountLabel.textContent = label;
+        }
+
+        updateSecondShownPrice();
+        updateRunningTotal();
+        renderSummary();
+      }
+
+      if (range && input){
+        range.addEventListener('input', e => {
+          input.value = e.target.value;
+          updateDynamicPrice(e.target.value);
         });
-        const lbl = inp.closest('label');
-        lbl.addEventListener('click', () => {
-          if (!inp.checked) {
-            inp.checked = true;
-            inp.dispatchEvent(new Event('change',{ bubbles:true }));
-          }
+        input.addEventListener('input', e => {
+          range.value = e.target.value;
+          updateDynamicPrice(e.target.value);
         });
-      });
+      }
+
+      if (guestRangeInput && guestRangeInput !== range) guestRangeInput.addEventListener('input', e => updateDynamicPrice(e.target.value));
+      if (guestNumberInput && guestNumberInput !== input){
+        guestNumberInput.addEventListener('input', e => updateDynamicPrice(e.target.value));
+        guestNumberInput.addEventListener('blur', e => updateDynamicPrice(e.target.value));
+      }
+
+      if (secondGuestRange && secondGuestInput) {
+        secondGuestRange.addEventListener('input', e => updateSecondGuests(e.target.value));
+        secondGuestInput.addEventListener('input', e => updateSecondGuests(e.target.value));
+        secondGuestInput.addEventListener('blur', e => updateSecondGuests(e.target.value));
+      }
 
       const elSecond=$('[data-second]'), secondWrap=$('[data-second-wrap]');
-      const elSecondBar=$('[data-second-bar]'), elSecondSize=$('[data-second-size]'), elSecondPrice=$('[data-second-price]');
-      elSecond.addEventListener('change',()=>{ state.secondEnabled=elSecond.checked; secondWrap.style.display=state.secondEnabled?'':'none'; updateSecondShownPrice(); updateRunningTotal(); renderSummary(); });
-      elSecondBar.addEventListener('change',()=>{ state.secondBar=elSecondBar.value; updateSecondShownPrice(); updateRunningTotal(); renderSummary(); });
-      elSecondSize.addEventListener('change',()=>{ state.secondSize=elSecondSize.value; updateSecondShownPrice(); updateRunningTotal(); renderSummary(); });
+      const elSecondBar=$('[data-second-bar]'), elSecondPrice=$('[data-second-price]');
+      elSecond.addEventListener('change',()=>{
+        state.secondEnabled=elSecond.checked;
+        secondWrap.style.display=state.secondEnabled?'':'none';
 
-      function pkgLabelFor(key){
-        if(key==='50-150-5h') return `${t('pkg_small_title')} • ${t('pkg_small_hours')}`;
-        if(key==='150-250-5h') return `${t('pkg_medium_title')} • ${t('pkg_medium_hours')}`;
-        if(key==='250-350-6h') return `${t('pkg_large_title')} • ${t('pkg_large_hours')}`;
-        return '';
+        if (state.secondEnabled) {
+          const initial = state.secondGuests || state.guests || 80;
+          updateSecondGuests(initial);
+        }
+
+        updateSecondShownPrice();
+        updateRunningTotal();
+        renderSummary();
+      });
+      elSecondBar.addEventListener('change',()=>{ state.secondBar=elSecondBar.value; updateSecondShownPrice(); updateRunningTotal(); renderSummary(); });
+
+      function roundToNearest5(n){ return Math.round((n || 0) / 5) * 5; }
+
+      function profitForGuests(count) {
+        const minGuests = 30;
+        const maxGuests = 350;
+        const minProfit = 150;
+        const maxProfit = 225;
+
+        const g = Math.max(minGuests, Math.min(maxGuests, count || 0));
+        const pct = (g - minGuests) / (maxGuests - minGuests);
+        const ideal = minProfit + pct * (maxProfit - minProfit);
+
+        return Math.max(minProfit, Math.min(maxProfit, ideal));
+      }
+
+      function secondDiscountForGuests(count) {
+        const minGuests = 40;
+        const maxGuests = 340;
+        const minDisc = 20;
+        const maxDisc = 75;
+
+        const g = Math.max(minGuests, Math.min(maxGuests, Number(count) || 0));
+        const pct = (g - minGuests) / (maxGuests - minGuests);
+        const raw = minDisc + pct * (maxDisc - minDisc);
+
+        return roundToNearest5(raw);
+      }
+
+      function calculateDynamicTotal(guests, barType='standard') {
+        const g = clampGuests(guests || state.guests || 0);
+        const hours = hoursFromGuests(g);
+
+        const attendants = employeesForGuests(g);
+        const totalHours = 1.5 + hours;
+        const labor = attendants * 18 * totalHours;
+        const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
+        const gas = 20;
+        const promo = 30;
+        const profit = profitForGuests(g);
+
+        let subtotal = labor + toppings + gas + promo + profit;
+
+        if (barType === 'tostiloco') {
+          subtotal += (g * 0.5);
+        }
+
+        const totalWithTax = subtotal * 1.0825;
+        const total = Math.round(totalWithTax / 5) * 5;
+        const perGuest = total / g;
+
+        return { total, perGuest };
+      }
+
+      function mainBarCalc(){
+        if (!state.mainBar || !state.guests) return { total: 0, perGuest: 0 };
+        const type = state.mainBar === 'tostiloco' ? 'tostiloco' : 'standard';
+        return calculateDynamicTotal(state.guests, type);
+      }
+
+      function mainBarPrice(){
+        return mainBarCalc().total;
+      }
+
+      function secondPrice(){
+        if(!state.secondEnabled) return 0;
+
+        const g = clampGuests(state.secondGuests || state.guests || 0);
+        const type = state.secondBar === 'tostiloco' ? 'tostiloco' : 'standard';
+
+        const base = calculateDynamicTotal(g, type).total;
+        const disc = secondDiscountForGuests(g);
+        const discounted = Math.max(0, base - disc);
+
+        return roundToNearest5(discounted);
+      }
+
+      function calculateFountainTotal(tierGuests, chocolateType){
+        const gRaw = Number(tierGuests || state.guests || 0);
+        const g = Math.max(30, Math.min(350, gRaw));
+        const hours = hoursFromGuests(g);
+        const attendants = employeesForGuests(g);
+        const totalHours = 1.5 + hours;
+        const labor = attendants * 18 * totalHours;
+        const toppings = g <= 75 ? 100 : g <= 125 ? 150 : 200;
+        const gas = 0;
+        const promo = 0;
+
+        const baseTarget = g <= 75 ? 350 : g <= 125 ? 450 : 550;
+        const premium = (chocolateType === 'white' || chocolateType === 'mixed') ? 50 : 0;
+        const targetWithPremium = baseTarget + premium;
+        const desiredPreTax = targetWithPremium / 1.0825;
+
+        const fixedCosts = labor + toppings + gas + promo;
+        const profitRaw = desiredPreTax - fixedCosts;
+        const profit = Math.max(150, Math.min(225, profitRaw));
+
+        const subtotal = fixedCosts + profit;
+        const totalWithTax = subtotal * 1.0825;
+        return roundToNearest5(totalWithTax);
+      }
+
+      function fountainPrice(){
+        if(!state.fountainEnabled) return 0;
+        const guestsForTier = Math.max(state.guests || 0, Number(state.fountainSize || 0));
+        return calculateFountainTotal(guestsForTier, state.fountainType);
       }
 
       function updateSecondShownPrice(){
-        const base=BASE_PRICES[state.secondSize]||0, disc=SECOND_DISCOUNT[state.secondSize]||0;
-        const val=Math.max(base-disc,0);
+        const val = secondPrice();
         if(state.secondEnabled){
-          elSecondPrice.textContent = `${fmt(val)} (${pkgLabelFor(state.secondSize)})`;
+          const g = clampGuests(state.secondGuests || state.guests || 0);
+          const h = hoursFromGuests(g);
+          const guestLabel = state.lang === 'es' ? 'invitados' : 'guests';
+          const hoursText = hoursLabel(h);
+          const countLine = state.lang === 'es' ? `Invitados: ${g} personas` : `Guests: ${g} people`;
+
+          if (secondGuestCountLabel) secondGuestCountLabel.textContent = countLine;
+          elSecondPrice.textContent = `${fmt(val)} • ${g} ${guestLabel} • ${hoursText}`;
         }else{
           elSecondPrice.textContent = t('summary_second_none');
         }
@@ -1550,30 +1866,38 @@
       elFSize.addEventListener('change',()=>{ state.fountainSize=elFSize.value; updateRunningTotal(); renderSummary(); });
       elFType.addEventListener('change',()=>{ state.fountainType=elFType.value; updateRunningTotal(); renderSummary(); });
 
-      function basePrice(){
-        if (!state.pkg || !state.mainBar) return 0;
-        const base = BASE_PRICES[state.pkg] || 0;
-        const add = BAR_META[state.mainBar]?.add || 0;
-        return base + add;
-      }
-      function secondPrice(){ if(!state.secondEnabled) return 0; const base=BASE_PRICES[state.secondSize]||0; const disc=SECOND_DISCOUNT[state.secondSize]||0; return Math.max(base-disc,0); }
-      function fountainPrice(){ if(!state.fountainEnabled) return 0; const base=FOUNTAIN_PRICE[state.fountainSize]||0; const add=(state.fountainType==='white'||state.fountainType==='mixed')?50:0; return base+add; }
       function compute(){
-        const base = basePrice();
+        const base = mainBarPrice();
         const s2 = secondPrice();
         const fnt = fountainPrice();
-        const total = base + s2 + fnt;
-        let dueNow = 0, savings = 0;
-        if (state.pay === 'full') { savings = FULL_FLAT_OFF; dueNow = Math.max(total - FULL_FLAT_OFF, 0); }
-        else { dueNow = Math.round(total * 0.25); }
-        return { base, s2, fnt, total, dueNow, savings };
+        const beforeDiscount = base + s2 + fnt;
+        let total = roundToNearest5(beforeDiscount);
+        let savings = 0;
+        if (state.pay === 'full') {
+          savings = FULL_FLAT_OFF;
+          total = roundToNearest5(Math.max(total - FULL_FLAT_OFF, 0));
+        }
+        const dueNow = state.pay === 'full' ? total : Math.round(total * 0.25);
+        return { base, s2, fnt, total, dueNow, savings, beforeDiscount };
       }
 
       function updateRunningTotal(){
-        const { total, dueNow } = compute();
-        $$('.running[data-running]').forEach(el => el.textContent = t('runningTotal', { total: fmt(total), due: fmt(dueNow) }));
+        const { total } = compute();
+        $$('.running[data-running]').forEach(el => el.textContent = t('runningTotal', { total: fmt(total) }));
+        updatePerGuestLine();
         updateFinancingNotes(total);
         if (state.step === TOTAL_STEPS-1) renderSummary();
+      }
+
+      function updatePerGuestLine(){
+        const perGuestEl = $('[data-per-guest]');
+        const guestCountEl = $('[data-guest-count]');
+        const guestLabel = t('guestCount', { count: state.guests || 0 });
+        if (guestCountEl) guestCountEl.textContent = guestLabel;
+        if (!perGuestEl) return;
+        const { perGuest } = mainBarCalc();
+        const label = t('perGuest', { price: fmt(perGuest || 0) });
+        perGuestEl.textContent = label;
       }
 
       function updateFinancingNotes(total){
@@ -1618,7 +1942,7 @@
 
       async function loadSlotsIfDate(){
         slotGrid.innerHTML='';
-        if(!state.dateISO || !state.pkg){ slotHint.textContent = t('slot_hint_pick'); return; }
+        if(!state.dateISO || !state.hours){ slotHint.textContent = t('slot_hint_pick'); return; }
         slotHint.textContent = t('slot_hint_loading');
         try {
           const qs = new URLSearchParams({ date: state.dateISO, hours: String(state.hours||0) });
@@ -1661,10 +1985,11 @@
 
       function renderSummary(){
         const barTitle = state.mainBar ? (t(`bar_${state.mainBar}_title`) || BAR_META[state.mainBar]?.title || '—') : '—';
-        const { total, dueNow, savings } = compute();
+        const { total, dueNow, savings, base: mainTotal, s2: secondTotal, fnt: fountainTotal } = compute();
         const locale = localeMap[state.lang] || 'en-US';
-        $('[data-sum-main]').textContent = state.mainBar ? `${barTitle}` : '—';
-        $('[data-sum-pkg]').textContent = state.pkg ? pkgLabelFor(state.pkg) : '—';
+        const guestLabel = state.lang === 'es' ? 'invitados' : 'guests';
+        $('[data-sum-main]').textContent = state.mainBar ? `${barTitle} • ${fmt(mainTotal)}` : '—';
+        $('[data-sum-pkg]').textContent = state.guests ? `${state.guests} ${guestLabel} • ${hoursLabel(state.hours)}` : '—';
         $('[data-sum-total]').textContent = fmt(total);
         $('[data-sum-due]').textContent = fmt(dueNow);
         $('[data-sum-paymode]').textContent = state.pay === 'full' ? t('pay_full') : t('pay_deposit');
@@ -1685,13 +2010,20 @@
         const timeText = state.startISO ? new Date(state.startISO).toLocaleTimeString(locale,{ hour:'numeric', minute:'2-digit' }) : '—';
         $('[data-sum-time]').textContent = timeText;
         $('[data-sum-venue]').textContent = state.venue || '—';
-        $('[data-sum-user]').textContent = state.name ? `${state.name} • ${state.email || ''}` : '—';
+        const contactParts = [];
+        if (state.name) contactParts.push(state.name);
+        if (state.email) contactParts.push(state.email);
+        if (state.phone) contactParts.push(state.phone);
+        $('[data-sum-user]').textContent = contactParts.length ? contactParts.join(' • ') : '—';
 
         const addonsList = $('[data-sum-addons]');
         addonsList.innerHTML = '';
         const items = [];
-        if (state.secondEnabled) items.push(`${t('addon_second_title')} • ${t(`bar_${state.secondBar}_title`) || state.secondBar} (${pkgLabelFor(state.secondSize)}) — ${fmt(secondPrice())}`);
-        if (state.fountainEnabled) items.push(`${t('addon_fountain_title')} (${state.fountainSize}) — ${fmt(fountainPrice())}`);
+        const secondGuests = clampGuests(state.secondGuests || state.guests || 0);
+        const secondHours = hoursFromGuests(secondGuests);
+        const secondLabel = `${secondGuests} ${guestLabel} • ${hoursLabel(secondHours)}`;
+        if (state.secondEnabled) items.push(`${t('addon_second_title')} • ${t(`bar_${state.secondBar}_title`) || state.secondBar} (${secondLabel}) — ${fmt(secondTotal)}`);
+        if (state.fountainEnabled) items.push(`${t('addon_fountain_title')} (${state.fountainSize}) — ${fmt(fountainTotal)}`);
         if (!items.length){
           const li=document.createElement('li');
           li.textContent = t('summary_no_addons');
@@ -1700,19 +2032,33 @@
           items.forEach(text => { const li=document.createElement('li'); li.textContent=text; addonsList.appendChild(li); });
         }
 
-        $('[data-sum-second]').textContent = state.secondEnabled ? `${t(`bar_${state.secondBar}_title`) || state.secondBar} • ${fmt(secondPrice())}` : t('summary_second_none');
-        $('[data-sum-fountain]').textContent = state.fountainEnabled ? `${state.fountainSize} • ${fmt(fountainPrice())}` : t('summary_fountain_none');
+        $('[data-sum-second]').textContent = state.secondEnabled ? `${t(`bar_${state.secondBar}_title`) || state.secondBar} • ${fmt(secondTotal)}` : t('summary_second_none');
+        $('[data-sum-fountain]').textContent = state.fountainEnabled ? `${state.fountainSize} • ${fmt(fountainTotal)}` : t('summary_fountain_none');
+      }
+
+      function classifyPkgFromGuests(guests) {
+        const g = Number(guests) || 0;
+        if (g <= 150) return '50-150-5h';
+        if (g <= 250) return '150-250-5h';
+        return '250-350-6h';
       }
 
       function readyPayload(){
+        const totals = compute();
+        const pkgCode = classifyPkgFromGuests(state.guests || 0);
+        const secondPkgCode = classifyPkgFromGuests(state.secondGuests || state.guests || 0);
         return {
-          pkg: state.pkg,
+          total: totals.total,
+          dueNow: totals.dueNow,
+          guests: state.guests,
+          hours: state.hours,
           mainBar: state.mainBar,
           payMode: state.pay,
           lang: state.lang,
+          pkg: pkgCode,
           secondEnabled: state.secondEnabled,
           secondBar: state.secondBar,
-          secondSize: state.secondSize,
+          secondSize: secondPkgCode,
           fountainEnabled: state.fountainEnabled,
           fountainSize: state.fountainSize,
           fountainType: state.fountainType,
@@ -1759,6 +2105,7 @@
 
       $('[data-pay]').addEventListener('click', doPay);
 
+      syncGuests(state.guests);
       go(0);
       renderCalendar();
       updateSecondShownPrice();
