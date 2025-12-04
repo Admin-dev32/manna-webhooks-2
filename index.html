@@ -956,8 +956,8 @@
                   <div class="desc" data-i18n="pkg_small_desc">Perfect for birthdays, showers, and intimate events.</div>
                   <div class="guest-range" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:14px;">
                     <input type="range" id="guestRange" min="30" max="350" step="20" value="80" data-guest-range style="flex:1 1 220px;">
-                    <div class="input" style="flex:0 0 120px;">
-                      <input type="number" id="guestInput" min="30" max="350" step="20" value="80" data-guest-input>
+                    <div class="input" style="flex:0 0 150px;"> <!-- UPDATED: wider numeric box -->
+                      <input type="number" id="guestInput" min="30" max="350" step="20" value="80" data-guest-input style="text-align:center; font-size:16px;">
                     </div>
                   </div>
                   <p class="desc" data-guest-count>Guests: 80 people</p>
@@ -1016,7 +1016,7 @@
                         data-second-guest-range
                         style="flex:1 1 220px;"
                       >
-                      <div class="input" style="flex:0 0 120px;">
+                      <div class="input" style="flex:0 0 150px;"> <!-- UPDATED: wider numeric box -->
                         <input
                           type="number"
                           min="40"
@@ -1024,6 +1024,7 @@
                           step="20"
                           value="80"
                           data-second-guest-input
+                          style="text-align:center; font-size:16px;"
                         >
                       </div>
                     </div>
@@ -1681,12 +1682,17 @@
         guestTitle.textContent = `${state.guests || 0} ${label}`;
       }
 
-      function syncGuests(val){
-        const g = clampGuests(val);
+      function syncGuests(val, opts = {}){
+        const { snap = true } = opts;
+        const raw = val;
+        const g = clampGuests(raw);
         state.guests = g;
         state.hours = hoursFromGuests(g);
         if (guestRangeInput && guestRangeInput.value !== String(g)) guestRangeInput.value = g;
-        if (guestNumberInput && guestNumberInput.value !== String(g)) guestNumberInput.value = g;
+        if (guestNumberInput){
+          const targetVal = snap ? g : (raw ?? '');
+          if (guestNumberInput.value !== String(targetVal)) guestNumberInput.value = targetVal;
+        }
         updateHoursBadge();
         updateGuestTitle();
         updateSecondShownPrice();
@@ -1697,20 +1703,24 @@
         updateControls();
       }
 
-      function updateDynamicPrice(val){
+      function updateDynamicPrice(val, opts = {}){
+        const { snap = true } = opts; // UPDATED: allow free typing, snap on blur/slider
         const nextVal = val ?? (guestRangeInput ? guestRangeInput.value : state.guests);
-        syncGuests(nextVal);
+        syncGuests(nextVal, { snap });
       }
 
-      function updateSecondGuests(val) {
-        const g = clampGuests(val);
+      function updateSecondGuests(val, opts = {}) {
+        const { snap = true } = opts;
+        const raw = val;
+        const g = clampGuests(raw);
         state.secondGuests = g;
 
         if (secondGuestRange && secondGuestRange.value !== String(g)) {
           secondGuestRange.value = g;
         }
-        if (secondGuestInput && secondGuestInput.value !== String(g)) {
-          secondGuestInput.value = g;
+        if (secondGuestInput){
+          const targetVal = snap ? g : (raw ?? '');
+          if (secondGuestInput.value !== String(targetVal)) secondGuestInput.value = targetVal;
         }
 
         const label = state.lang === 'es'
@@ -1729,24 +1739,25 @@
       if (range && input){
         range.addEventListener('input', e => {
           input.value = e.target.value;
-          updateDynamicPrice(e.target.value);
+          updateDynamicPrice(e.target.value, { snap: true });
         });
         input.addEventListener('input', e => {
           range.value = e.target.value;
-          updateDynamicPrice(e.target.value);
+          updateDynamicPrice(e.target.value, { snap: false });
         });
+        input.addEventListener('blur', e => updateDynamicPrice(e.target.value, { snap: true })); // UPDATED: snap on blur
       }
 
-      if (guestRangeInput && guestRangeInput !== range) guestRangeInput.addEventListener('input', e => updateDynamicPrice(e.target.value));
+      if (guestRangeInput && guestRangeInput !== range) guestRangeInput.addEventListener('input', e => updateDynamicPrice(e.target.value, { snap: true }));
       if (guestNumberInput && guestNumberInput !== input){
-        guestNumberInput.addEventListener('input', e => updateDynamicPrice(e.target.value));
-        guestNumberInput.addEventListener('blur', e => updateDynamicPrice(e.target.value));
+        guestNumberInput.addEventListener('input', e => updateDynamicPrice(e.target.value, { snap: false }));
+        guestNumberInput.addEventListener('blur', e => updateDynamicPrice(e.target.value, { snap: true })); // UPDATED: clamp/snap on blur
       }
 
       if (secondGuestRange && secondGuestInput) {
-        secondGuestRange.addEventListener('input', e => updateSecondGuests(e.target.value));
-        secondGuestInput.addEventListener('input', e => updateSecondGuests(e.target.value));
-        secondGuestInput.addEventListener('blur', e => updateSecondGuests(e.target.value));
+        secondGuestRange.addEventListener('input', e => updateSecondGuests(e.target.value, { snap: true }));
+        secondGuestInput.addEventListener('input', e => updateSecondGuests(e.target.value, { snap: false }));
+        secondGuestInput.addEventListener('blur', e => updateSecondGuests(e.target.value, { snap: true })); // UPDATED: snap on blur
       }
 
       const elSecond=$('[data-second]'), secondWrap=$('[data-second-wrap]');
