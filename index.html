@@ -807,6 +807,35 @@
       .controls { flex-wrap:wrap; }
       .lang-toggle { align-self:flex-end; }
     }
+      /* 👇 Refuerzo visual SOLO para el slider de invitados */
+    #manna-booking-steps .guest-range input[type="range"] {
+      background: linear-gradient(
+        90deg,
+        rgba(249,168,212,0.65),
+        rgba(192,132,252,0.9)
+      );
+      height: 12px;
+      border-radius: 999px;
+    }
+    
+    /* Thumb bien visible */
+    #manna-booking-steps .guest-range input[type="range"]::-webkit-slider-thumb,
+    #manna-booking-steps .guest-range input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg,#f9a8d4,#c084fc);
+      border: 2px solid #ffffff;
+      box-shadow:
+        0 0 0 3px rgba(255,255,255,0.9),
+        0 0 0 6px rgba(192,132,252,0.6),
+        0 6px 14px rgba(15,23,42,0.35);
+    }
+    
+    /* Por si acaso algún estilo lo dejó transparente */
+    #guestRange {
+      opacity: 1;
+    }
   </style>
   <div class="wrap">
     <div class="header">
@@ -1841,6 +1870,108 @@
       function fountainPrice(){
         if(!state.fountainEnabled) return 0;
         const guestsForTier = Math.max(state.guests || 0, Number(state.fountainSize || 0));
+        return calculateFountainTotal(guestsForTier, state.fountainType);
+      }
+
+      function roundToNearest5(n){ return Math.round((n || 0) / 5) * 5; }
+
+      function profitForGuests(count) {
+        const minGuests = 30;
+        const maxGuests = 350;
+        const minProfit = 150;
+        const maxProfit = 225;
+
+        const g = Math.max(minGuests, Math.min(maxGuests, count || 0));
+        const pct = (g - minGuests) / (maxGuests - minGuests);
+        const ideal = minProfit + pct * (maxProfit - minProfit);
+
+        return Math.max(minProfit, Math.min(maxProfit, ideal));
+      }
+
+      function calculateDynamicTotal(guests, barType='standard') {
+        const g = clampGuests(guests || state.guests || 0);
+        const hours = state.hours || hoursFromGuests(g);
+
+        const attendants = employeesForGuests(g);
+        const totalHours = 1.5 + hours;
+        const labor = attendants * 18 * totalHours;
+        const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
+        const gas = 20;
+        const promo = 30;
+        const profit = profitForGuests(g);
+
+        let subtotal = labor + toppings + gas + promo + profit;
+
+        if (barType === 'tostiloco') {
+          subtotal += (g * 0.5);
+        }
+
+        const totalWithTax = subtotal * 1.0825;
+        const total = Math.round(totalWithTax / 5) * 5;
+        const perGuest = total / g;
+
+        return { total, perGuest };
+      }
+
+      function mainBarCalc(){
+        if (!state.mainBar || !state.guests) return { total: 0, perGuest: 0 };
+        const type = state.mainBar === 'tostiloco' ? 'tostiloco' : 'standard';
+        return calculateDynamicTotal(state.guests, type);
+      }
+
+      function mainBarPrice(){
+        return mainBarCalc().total;
+      }
+
+      function secondPrice(){
+        if(!state.secondEnabled) return 0;
+
+        const g = clampGuests(state.guests);
+        const hours = hoursFromGuests(g);
+        const attendants = employeesForGuests(g);
+        const totalHours = 1.5 + hours;
+        const labor = attendants * 18 * totalHours;
+        const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
+        const profit = Math.max(120, profitForGuests(g) * 0.8);
+
+        let subtotal = labor + toppings + profit;
+
+        if (state.secondBar === 'tostiloco') {
+          subtotal += (g * 0.5);
+        }
+
+        const totalWithTax = subtotal * 1.0825;
+        const total = roundToNearest5(totalWithTax);
+        return total;
+      }
+
+      function calculateFountainTotal(tierGuests, chocolateType){
+        const g = clampGuests(tierGuests || state.guests || 0);
+        const hours = hoursFromGuests(g);
+        const attendants = employeesForGuests(g);
+        const totalHours = 1.5 + hours;
+        const labor = attendants * 18 * totalHours;
+        const toppings = g <= 75 ? 100 : g <= 125 ? 150 : 200;
+        const gas = 0;
+        const promo = 0;
+
+        const baseTarget = g <= 75 ? 350 : g <= 125 ? 450 : 550;
+        const premium = (chocolateType === 'white' || chocolateType === 'mixed') ? 50 : 0;
+        const targetWithPremium = baseTarget + premium;
+        const desiredPreTax = targetWithPremium / 1.0825;
+
+        const fixedCosts = labor + toppings + gas + promo;
+        const profitRaw = desiredPreTax - fixedCosts;
+        const profit = Math.max(150, Math.min(225, profitRaw));
+
+        const subtotal = fixedCosts + profit;
+        const totalWithTax = subtotal * 1.0825;
+        return roundToNearest5(totalWithTax);
+      }
+
+      function fountainPrice(){
+        if(!state.fountainEnabled) return 0;
+        const guestsForTier = Math.max(clampGuests(state.guests), clampGuests(state.fountainSize || 0));
         return calculateFountainTotal(guestsForTier, state.fountainType);
       }
 
