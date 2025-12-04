@@ -1,107 +1,243 @@
-// /api/ai-checkout.js
-// Proxy endpoint for ChatGPT or external AI clients
-// Relays requests to your main /api/checkout route
-// 🔓 Validación ligera: SOLO pkg, mainBar y payMode.
+// pages/api/ai-checkout.js
+import Stripe from 'stripe';
 
-export const config = { runtime: "nodejs" };
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2023-10-16',
+});
 
-// Base del backend real (puedes cambiarla por env var)
-const CHECKOUT_BASE =
-  process.env.MANNA_CHECKOUT_BASE || "https://manna-webhooks-2.vercel.app";
+// Helper: convierte base_prices en tabla ordenada por "máximo de invitados"
+function buildPriceTable(basePrices) {
+  return Object.entries(basePrices || {})
+    .map(([key, price]) => {
+      // key puede ser "150" o "100-150"
+      let maxGuests;
 
-const REQUIRED_CORE_FIELDS = ["pkg", "mainBar", "payMode"];
+      if (key.includes('-')) {
+        const parts = key.split('-').map((x) => parseInt(x.trim(), 10));
+        maxGuests = parts[1]; // usamos el máximo del rango
+      } else {
+        maxGuests = parseInt(key.trim(), 10);
+      }
+
+      return { key, maxGuests, price: Number(price) };
+    })
+    .filter((row) => !Number.isNaN(row.maxGuests) && !Number.isNaN(row.price))
+    .sort((a, b) => a.maxGuests - b.maxGuests);
+}
+
+// Helper: encuentra el precio usando guests
+function resolvePriceFromGuests(guests, basePrices) {
+  const table = buildPriceTable(basePrices);
+  if (!table.length) return null;
+
+  const guestsNum = Number(guests);
+
+  // primer paquete cuyo maxGuests sea >= guests
+  const match = table.find((row) => guestsNum <= row.maxGuests);
+
+  // si no hay ninguno, usamos el más grande (último)
+  return (match || table[table.length - 1]).price;
+}
+
+// Helper: obtiene el precio base final usando pkg o guests
+function getBasePrice({ pkg, guests, basePrices }) {
+  // 1) si el pkg existe en base_prices, úsalo
+  if (pkg && basePrices && basePrices[pkg] != null) {
+    return Number(basePrices[pkg]);
+  }
+
+  // 2) si no, intenta resolver con guests
+  return resolvePriceFromGuests(guests, basePrices);
+}
 
 export default async function handler(req, res) {
-  // Solo POST (opcionalmente podrías aceptar OPTIONS para CORS)
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
-    // Vercel ya parsea JSON, pero soportamos string por si llega crudo
-    const rawBody = req.body || {};
-    let body;
+    const {
+      pkg,
+      mainBar,          // "pancake" | "tostiloco" | "maruchan" | "snack" | etc.
+      payMode,          // "deposit" | "full"
+      secondEnabled,
+      secondBar,
+      secondSize,
+      fountainEnabled,
+      fountainSize,
+      fountainType,
+      fullName,
+      email,
+      phone,
+      venue,
+      dateISO,
+      startISO,
+      guests,
+      discountApplied,
+      discountNote,
+      bundleNote,
+    } = req.body || {};
 
-    try {
-      body =
-        typeof rawBody === "string" ? JSON.parse(rawBody || "{}") : rawBody;
-    } catch (parseErr) {
+    // -------- Validaciones mínimas obligatorias --------
+    if (!mainBar || !payMode || !fullName || !email || !venue || !dateISO || !startISO || !guests) {
       return res.status(400).json({
         success: false,
-        error: "Invalid JSON body",
-        detail: String(parseErr.message || parseErr),
+        error: 'Missing required fields',
       });
     }
 
-    // ✅ Validación LIGERA (solo campos core)
-    const missing = REQUIRED_CORE_FIELDS.filter((field) => {
-      const value = body[field];
-      return (
-        value === undefined ||
-        value === null ||
-        (typeof value === "string" && value.trim() === "")
-      );
-    });
+    // -------- 1) Traer precios vivos desde /api/pricing --------
+    const baseUrl =
+      process.env.MANNA_BASE_URL || 'https://manna-webhooks-2.vercel.app';
 
-    if (missing.length > 0) {
+    const pricingRes = await fetch(`${baseUrl}/api/pricing`);
+    if (!pricingRes.ok) {
+      console.error('Error fetching /api/pricing', pricingRes.status);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to load pricing data',
+      });
+    }
+
+    const pricing = await pricingRes.json();
+    const basePrices = pricing.base_prices || {};
+    const secondDiscountMap = pricing.second_discount || {};
+    const fountainPriceMap = pricing.fountain_price || {};
+    const fullPaymentDiscount = Number(pricing.full_payment_discount || 0);
+
+    // -------- 2) Calcular precio base de la barra principal --------
+    const basePriceMain = getBasePrice({ pkg, guests, basePrices });
+
+    if (!basePriceMain || basePriceMain <= 0) {
+      console.error('Base price resolved as 0 or invalid', {
+        pkg,
+        guests,
+        basePriceMain,
+      });
+
       return res.status(400).json({
         success: false,
-        error: "Missing required core fields",
-        missing,
+        error: 'No valid base price found for this guest count',
+        debug: { pkg, guests },
       });
     }
 
-    // Construimos la URL real de checkout por si cambias base
-    const upstreamUrl = new URL("/api/checkout", CHECKOUT_BASE).toString();
+    // Monto principal según modo de pago
+    let subtotalMain =
+      payMode === 'deposit' ? basePriceMain * 0.25 : basePriceMain;
 
-    // 🔁 Reenviar el payload tal cual a tu /api/checkout real
-    const response = await fetch(upstreamUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+    // Descuento por pago completo (si existe en /api/pricing)
+    if (payMode === 'full' && fullPaymentDiscount > 0) {
+      subtotalMain = Math.max(subtotalMain - fullPaymentDiscount, 0);
+    }
+
+    // -------- 3) Segunda barra (si aplica) --------
+    let subtotalSecond = 0;
+
+    if (secondEnabled) {
+      // Para la segunda barra podemos:
+      // - usar secondSize si existe en el mapa de descuentos
+      // - o volver a usar guests / basePrices y aplicar un descuento
+      const secondBase = getBasePrice({
+        pkg: secondSize || pkg,
+        guests,
+        basePrices,
+      });
+
+      let secondDiscount = 0;
+      if (secondSize && secondDiscountMap[secondSize] != null) {
+        // segundo mapa podría ser monto fijo a descontar o porcentaje,
+        // aquí asumimos monto fijo en dólares.
+        secondDiscount = Number(secondDiscountMap[secondSize]);
+      }
+
+      const secondPrice = Math.max(secondBase - secondDiscount, 0);
+      subtotalSecond =
+        payMode === 'deposit' ? secondPrice * 0.25 : secondPrice;
+    }
+
+    // -------- 4) Chocolate fountain (si aplica) --------
+    let subtotalFountain = 0;
+
+    if (fountainEnabled && fountainSize) {
+      const fountainBase = Number(fountainPriceMap[fountainSize] || 0);
+      if (fountainBase > 0) {
+        subtotalFountain =
+          payMode === 'deposit' ? fountainBase * 0.25 : fountainBase;
+      }
+    }
+
+    // -------- 5) Total general --------
+    const subtotal = subtotalMain + subtotalSecond + subtotalFountain;
+
+    if (!subtotal || subtotal <= 0) {
+      console.error('Subtotal is 0, aborting Stripe session', {
+        subtotalMain,
+        subtotalSecond,
+        subtotalFountain,
+      });
+
+      return res.status(400).json({
+        success: false,
+        error: 'Calculated subtotal is 0 — check pricing configuration',
+      });
+    }
+
+    const amountInCents = Math.round(subtotal * 100);
+
+    // -------- 6) Crear sesión de Stripe Checkout --------
+    const productName = `Manna — ${mainBar} • ${
+      payMode === 'deposit' ? '25% deposit' : 'Full payment'
+    }`;
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      success_url: `${baseUrl}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/checkout-cancelled`,
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: productName,
+            },
+            unit_amount: amountInCents,
+          },
+          quantity: 1,
+        },
+      ],
+      customer_email: email,
+      metadata: {
+        mainBar,
+        payMode,
+        fullName,
+        phone: phone || '',
+        venue,
+        dateISO,
+        startISO,
+        guests: String(guests),
+        secondEnabled: String(!!secondEnabled),
+        secondBar: secondBar || '',
+        secondSize: secondSize || '',
+        fountainEnabled: String(!!fountainEnabled),
+        fountainSize: fountainSize || '',
+        fountainType: fountainType || '',
+        discountApplied: String(!!discountApplied),
+        discountNote: discountNote || '',
+        bundleNote: bundleNote || '',
+        pkg: pkg || '',
+      },
     });
 
-    // Leemos el cuerpo UNA sola vez y luego intentamos parsear JSON
-    let upstreamText = "";
-    try {
-      upstreamText = await response.text();
-    } catch {
-      upstreamText = "";
-    }
-
-    let upstreamJson = null;
-    try {
-      upstreamJson = upstreamText ? JSON.parse(upstreamText) : null;
-    } catch {
-      upstreamJson = null;
-    }
-
-    if (response.ok) {
-      const checkoutUrl =
-        (upstreamJson && upstreamJson.url) || upstreamJson?.checkout_url || null;
-
-      return res.status(200).json({
-        success: true,
-        checkout_url: checkoutUrl,
-        // Opcionalmente eco del cuerpo por si tu GPT quiere leer más info
-        upstream: upstreamJson || upstreamText || null,
-      });
-    } else {
-      return res.status(response.status).json({
-        success: false,
-        error: "Upstream checkout error",
-        detail:
-          (upstreamJson && (upstreamJson.detail || upstreamJson.error)) ||
-          upstreamText ||
-          null,
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      checkout_url: session.url,
+    });
   } catch (err) {
-    console.error("AI Checkout error:", err);
+    console.error('ai-checkout error', err);
     return res.status(500).json({
       success: false,
-      error: "Internal AI checkout proxy error",
-      detail: err.message || String(err),
+      error: 'Internal server error creating checkout session',
     });
   }
 }
