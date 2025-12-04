@@ -1,73 +1,119 @@
 export default async function handler(req, res) {
   try {
     const url = "https://manna-webhooks-2.vercel.app/";
-    const html = await fetch(url).then(r => r.text());
+    const html = await fetch(url).then((r) => r.text());
 
-    /* --- 1. Safe extractors for constants --- */
+    // ---- Helpers para extraer constantes del <script> ----
     const extractObj = (key) => {
-      const regex = new RegExp(`const\\s+${key}\\s*=\\s*({[\\s\\S]*?})[;\\n]`);
+      // Busca: const KEY = { ... };
+      const regex = new RegExp(
+        `const\\s+${key}\\s*=\\s*({[\\s\\S]*?})\\s*[;\\n]`
+      );
       const match = html.match(regex);
-      if (!match) return {};
-      try { return eval("(" + match[1] + ")"); } catch { return {}; }
-    };
-    const extractNum = (key) => {
-      const regex = new RegExp(`const\\s+${key}\\s*=\\s*(\\d+)`);
-      const match = html.match(regex);
-      return match ? Number(match[1]) : 0;
+      if (!match) return null;
+      try {
+        // Evaluar solo el objeto, en un scope aislado
+        // (no ejecuta el resto del script)
+        // eslint-disable-next-line no-new-func
+        return Function('"use strict"; return (' + match[1] + ");")();
+      } catch {
+        return null;
+      }
     };
 
-    /* --- 2. Extract JS constants --- */
-    const base_prices = extractObj("BASE_PRICES");
-    const bar_meta = extractObj("BAR_META");
-    const second_discount = extractObj("SECOND_DISCOUNT");
-    const fountain_price = extractObj("FOUNTAIN_PRICE");
+    const extractNum = (key) => {
+      const regex = new RegExp(`const\\s+${key}\\s*=\\s*(\\d+(?:\\.\\d+)?)`);
+      const match = html.match(regex);
+      return match ? Number(match[1]) : null;
+    };
+
+    // ---- 1. Lo que SÍ existe ahora en el HTML ----
+    const bar_meta = extractObj("BAR_META") || {};
     const full_payment_discount = extractNum("FULL_FLAT_OFF");
 
-    /* --- 3. Parse HTML bar blocks for human text --- */
-    const bars = Array.from(
-      html.matchAll(/<label class="choice bar-card"[^>]*data-bar="([^"]+)"[^>]*>([\s\S]*?)<\/label>/g)
+    // ---- 2. Construir arreglo de barras a partir de BAR_META + HTML ----
+    const barsFromHtml = Array.from(
+      html.matchAll(
+        /<label class="choice bar-card"[^>]*data-bar="([^"]+)"[^>]*>([\s\S]*?)<\/label>/g
+      )
     ).map(([_, id, inner]) => {
-      const title = (inner.match(/<div class="title">(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
-      const tag = (inner.match(/<div class="tag"[^>]*>(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
-      const desc = (inner.match(/<div class="desc">(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
-      const details = (inner.match(/<div class="details">(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
-      const meta = bar_meta?.[id] || {};
+      const titleHtml =
+        (inner.match(/<div class="title">(.*?)<\/div>/) || [])[1] || "";
+      const tagHtml =
+        (inner.match(/<div class="tag"[^>]*>(.*?)<\/div>/) || [])[1] || "";
+      const descHtml =
+        (inner.match(/<div class="desc">(.*?)<\/div>/) || [])[1] || "";
+      const detailsHtml =
+        (inner.match(/<div class="details">(.*?)<\/div>/) || [])[1] || "";
+
+      const clean = (s) => s.replace(/<[^>]+>/g, "").trim();
+
+      const meta = bar_meta[id] || {};
+
       return {
         id,
-        title: title || meta.title || '',
-        tag,
-        desc: desc || meta.desc || '',
-        details: details || meta.details || '',
-        add: meta.add || 0,
-        base_price: base_prices || {}
+        title: clean(titleHtml) || meta.title || "",
+        tag: clean(tagHtml),
+        desc: clean(descHtml),
+        details: clean(detailsHtml),
+        // priceAdd en BAR_META (ej. Tostiloco +$50)
+        add: meta.priceAdd || 0,
       };
     });
 
-    /* --- 4. Parse add-on info --- */
+    // Si por alguna razón no encontramos nada en el HTML, caemos al objeto
+    const bars =
+      barsFromHtml.length > 0
+        ? barsFromHtml
+        : Object.entries(bar_meta).map(([id, meta]) => ({
+            id,
+            title: meta.title || "",
+            tag: "",
+            desc: "",
+            details: "",
+            add: meta.priceAdd || 0,
+          }));
+
+    // ---- 3. Extras / add-ons desde el HTML ----
     const addons = Array.from(
       html.matchAll(/<div class="add-on-row">([\s\S]*?)<\/div>\s*<\/div>/g)
     ).map(([_, block]) => {
-      const title = (block.match(/<div class="title"[^>]*>(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
-      const copy = (block.match(/<div class="copy"[^>]*>(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
-      const price = (block.match(/<div class="price"[^>]*>(.*?)<\/div>/) || [])[1]?.replace(/<[^>]+>/g, '').trim() || '';
-      return { title, copy, price };
+      const rawTitle =
+        (block.match(/<div class="title"[^>]*>(.*?)<\/div>/) || [])[1] || "";
+      const rawCopy =
+        (block.match(/<div class="copy"[^>]*>(.*?)<\/div>/) || [])[1] || "";
+      const rawPrice =
+        (block.match(/<div class="price"[^>]*>(.*?)<\/div>/) || [])[1] || "";
+
+      const clean = (s) => s.replace(/<[^>]+>/g, "").trim();
+
+      return {
+        title: clean(rawTitle),
+        copy: clean(rawCopy),
+        priceText: clean(rawPrice), // texto tal cual se ve (ej. "$325.00 • 120 guests • 2 hrs")
+      };
     });
 
-    /* --- 5. Combine everything --- */
+    // ---- 4. Respuesta unificada ----
     const data = {
       source: url,
-      base_prices,
+      pricing_mode: "dynamic-from-widget", // IMPORTANTE para tu GPT
+      // Estas tablas ya no existen en el HTML actual; las marcamos como null
+      base_prices: null,
+      second_discount: null,
+      fountain_price: null,
+      // Lo que sí es real:
+      full_payment_discount, // normalmente 20
       bar_meta,
-      second_discount,
-      fountain_price,
-      full_payment_discount,
       bars,
-      addons
+      addons,
     };
 
     res.status(200).json(data);
   } catch (err) {
     console.error("Error reading pricing data:", err);
-    res.status(500).json({ error: "Failed to extract pricing information from live HTML" });
+    res
+      .status(500)
+      .json({ error: "Failed to extract pricing information from live HTML" });
   }
 }
