@@ -1,23 +1,15 @@
 // /api/ai-checkout.js
 // Proxy endpoint for ChatGPT or external AI clients
-// Safely relays requests to your main /api/checkout route
+// Relays requests to your main /api/checkout route
+// 🔓 Validación ligera: SOLO pkg, mainBar y payMode.
 
 export const config = { runtime: "nodejs" };
 
-const REQUIRED_FIELDS = [
-  "pkg",       // rango de invitados / paquete
-  "mainBar",   // tipo de barra principal
-  "payMode",   // "deposit" o "full"
-  "fullName",  // nombre completo del cliente
-  "email",     // correo del cliente
-  "dateISO",   // fecha del evento (YYYY-MM-DD)
-  "startISO",  // hora de inicio en ISO (ej. 2026-03-29T20:30:00-08:00)
-  "venue",     // ciudad / dirección del evento
-  "guests"     // número aproximado de invitados
-];
+// Campos mínimos que /api/checkout necesita para funcionar
+const REQUIRED_CORE_FIELDS = ["pkg", "mainBar", "payMode"];
 
 export default async function handler(req, res) {
-  // Accept only POST requests from ChatGPT
+  // Aceptar solo POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -26,31 +18,27 @@ export default async function handler(req, res) {
     // Vercel normalmente ya parsea JSON; por si acaso, soportamos string también
     const rawBody = req.body || {};
     const body =
-      typeof rawBody === "string"
-        ? JSON.parse(rawBody || "{}")
-        : rawBody;
+      typeof rawBody === "string" ? JSON.parse(rawBody || "{}") : rawBody;
 
-    // 🔒 Validación estricta de campos obligatorios
-    const missing = REQUIRED_FIELDS.filter((field) => {
+    // ✅ Validación LIGERA (solo campos core)
+    const missing = REQUIRED_CORE_FIELDS.filter((field) => {
       const value = body[field];
-      // Consideramos vacío: undefined, null, "", 0 invitados, etc.
       return (
         value === undefined ||
         value === null ||
-        (typeof value === "string" && value.trim() === "") ||
-        (field === "guests" && (!Number.isFinite(Number(value)) || Number(value) <= 0))
+        (typeof value === "string" && value.trim() === "")
       );
     });
 
     if (missing.length > 0) {
       return res.status(400).json({
         success: false,
-        error: "Missing required fields",
+        error: "Missing required core fields",
         missing
       });
     }
 
-    // Forward the same payload to your real /api/checkout
+    // 🔁 Reenviar el payload tal cual a tu /api/checkout real
     const response = await fetch(
       "https://manna-webhooks-2.vercel.app/api/checkout",
       {
@@ -60,7 +48,6 @@ export default async function handler(req, res) {
       }
     );
 
-    // If checkout returns a URL, relay it back to ChatGPT
     if (response.ok) {
       const data = await response.json();
       return res.status(200).json({
@@ -77,7 +64,7 @@ export default async function handler(req, res) {
     }
   } catch (err) {
     console.error("AI Checkout error:", err);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: "Internal AI checkout proxy error",
       detail: err.message
