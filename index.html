@@ -1763,25 +1763,22 @@
         if(!state.secondEnabled) return 0;
 
         const g = clampGuests(state.guests);
-        const hours = state.hours || hoursFromGuests(g);
+        const hours = hoursFromGuests(g);
         const attendants = employeesForGuests(g);
         const totalHours = 1.5 + hours;
         const labor = attendants * 18 * totalHours;
         const toppings = g <= 150 ? 100 : g <= 250 ? 150 : 200;
-        const gas = 0;
-        const promo = 0;
-        const profit = profitForGuests(g);
+        const profit = Math.max(120, profitForGuests(g) * 0.8);
 
-        let subtotal = labor + toppings + gas + promo + profit;
+        let subtotal = labor + toppings + profit;
 
         if (state.secondBar === 'tostiloco') {
           subtotal += (g * 0.5);
         }
 
         const totalWithTax = subtotal * 1.0825;
-        const recalculated = roundToNearest5(totalWithTax);
-        const bundled = roundToNearest5(mainBarPrice() * 0.65);
-        return bundled || recalculated;
+        const total = roundToNearest5(totalWithTax);
+        return total;
       }
 
       function calculateFountainTotal(tierGuests, chocolateType){
