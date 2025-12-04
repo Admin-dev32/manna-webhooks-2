@@ -5,20 +5,33 @@
 
 export const config = { runtime: "nodejs" };
 
-// Campos mínimos que /api/checkout necesita para funcionar
+// Base del backend real (puedes cambiarla por env var)
+const CHECKOUT_BASE =
+  process.env.MANNA_CHECKOUT_BASE || "https://manna-webhooks-2.vercel.app";
+
 const REQUIRED_CORE_FIELDS = ["pkg", "mainBar", "payMode"];
 
 export default async function handler(req, res) {
-  // Aceptar solo POST
+  // Solo POST (opcionalmente podrías aceptar OPTIONS para CORS)
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    // Vercel normalmente ya parsea JSON; por si acaso, soportamos string también
+    // Vercel ya parsea JSON, pero soportamos string por si llega crudo
     const rawBody = req.body || {};
-    const body =
-      typeof rawBody === "string" ? JSON.parse(rawBody || "{}") : rawBody;
+    let body;
+
+    try {
+      body =
+        typeof rawBody === "string" ? JSON.parse(rawBody || "{}") : rawBody;
+    } catch (parseErr) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid JSON body",
+        detail: String(parseErr.message || parseErr),
+      });
+    }
 
     // ✅ Validación LIGERA (solo campos core)
     const missing = REQUIRED_CORE_FIELDS.filter((field) => {
@@ -34,32 +47,53 @@ export default async function handler(req, res) {
       return res.status(400).json({
         success: false,
         error: "Missing required core fields",
-        missing
+        missing,
       });
     }
 
+    // Construimos la URL real de checkout por si cambias base
+    const upstreamUrl = new URL("/api/checkout", CHECKOUT_BASE).toString();
+
     // 🔁 Reenviar el payload tal cual a tu /api/checkout real
-    const response = await fetch(
-      "https://manna-webhooks-2.vercel.app/api/checkout",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      }
-    );
+    const response = await fetch(upstreamUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    // Leemos el cuerpo UNA sola vez y luego intentamos parsear JSON
+    let upstreamText = "";
+    try {
+      upstreamText = await response.text();
+    } catch {
+      upstreamText = "";
+    }
+
+    let upstreamJson = null;
+    try {
+      upstreamJson = upstreamText ? JSON.parse(upstreamText) : null;
+    } catch {
+      upstreamJson = null;
+    }
 
     if (response.ok) {
-      const data = await response.json();
+      const checkoutUrl =
+        (upstreamJson && upstreamJson.url) || upstreamJson?.checkout_url || null;
+
       return res.status(200).json({
         success: true,
-        checkout_url: data.url || null
+        checkout_url: checkoutUrl,
+        // Opcionalmente eco del cuerpo por si tu GPT quiere leer más info
+        upstream: upstreamJson || upstreamText || null,
       });
     } else {
-      const errorText = await response.text();
       return res.status(response.status).json({
         success: false,
         error: "Upstream checkout error",
-        detail: errorText
+        detail:
+          (upstreamJson && (upstreamJson.detail || upstreamJson.error)) ||
+          upstreamText ||
+          null,
       });
     }
   } catch (err) {
@@ -67,7 +101,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       success: false,
       error: "Internal AI checkout proxy error",
-      detail: err.message
+      detail: err.message || String(err),
     });
   }
 }
