@@ -55,6 +55,79 @@
       gap:20px;
     }
 
+    .xmas-hero {
+      max-width:980px;
+      margin:0 auto;
+      padding:34px clamp(16px,4vw,40px) 0;
+    }
+
+    .xmas-hero .hero-card {
+      background:linear-gradient(130deg,#fef6ff,#e8f5ff 50%,#eef2ff);
+      border:1px solid rgba(192,132,252,.35);
+      border-radius:32px;
+      padding:26px clamp(18px,4vw,36px);
+      box-shadow:var(--shadow);
+      display:grid;
+      gap:12px;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .xmas-hero .hero-card::after {
+      content:"";
+      position:absolute;
+      inset:0;
+      background:radial-gradient(circle at 20% 20%, rgba(236,72,153,.1), transparent 38%),
+        radial-gradient(circle at 80% 0%, rgba(147,197,253,.18), transparent 36%);
+      pointer-events:none;
+    }
+
+    .xmas-hero .badge {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 14px;
+      border-radius:999px;
+      background:rgba(255,255,255,.9);
+      color:#dc2626;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:0.08em;
+      font-size:12px;
+      box-shadow:0 12px 28px rgba(220,38,38,.12);
+      z-index:1;
+      width:max-content;
+    }
+
+    .xmas-hero h2 {
+      margin:0;
+      font-size:clamp(24px,4vw,34px);
+      font-weight:800;
+      color:var(--hero-ink);
+      z-index:1;
+    }
+
+    .xmas-hero p {
+      margin:0;
+      color:var(--muted);
+      font-weight:600;
+      z-index:1;
+    }
+
+    .xmas-hero .actions {
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+      z-index:1;
+    }
+
+    .price-regular {
+      color: #dc2626;
+      text-decoration: line-through;
+      font-weight: 800;
+    }
+
     #manna-booking-steps .header {
       display:flex;
       flex-wrap:wrap;
@@ -837,6 +910,16 @@
       opacity: 1;
     }
   </style>
+  <div class="xmas-hero">
+    <div class="hero-card">
+      <span class="badge" data-i18n="xmas_badge">Christmas Special</span>
+      <h2 data-i18n="xmas_title">Save $150 on your Manna Snack Bar</h2>
+      <p data-i18n="xmas_subtitle">Limited-time holiday offer applied automatically to your final total.</p>
+      <div class="actions">
+        <button class="btn" type="button" data-xmas-cta data-i18n="xmas_cta">Start your Christmas booking</button>
+      </div>
+    </div>
+  </div>
   <div class="wrap">
     <div class="header">
       <div class="brand">
@@ -1205,7 +1288,11 @@
                 <h3 data-i18n="summary_payment">Payment</h3>
                 <div class="summary-row"><span class="label" data-i18n="summary_payMode">Mode</span><span class="value" data-sum-paymode>—</span></div>
                 <div class="totals">
-                  <div class="summary-row"><span class="label" data-i18n="summary_total">Total</span><span class="value total-main" data-sum-total>$0</span></div>
+                  <div class="summary-row" data-regular-row>
+                    <span class="label" data-i18n="summary_regular">Regular price</span>
+                    <span class="value price-regular" data-sum-regular>$0</span>
+                  </div>
+                  <div class="summary-row"><span class="label" data-i18n="summary_total_special">Christmas Special</span><span class="value total-main" data-sum-total>$0</span></div>
                   <div class="summary-row" data-full-save-row style="display:none;"><span class="label" data-i18n="summary_discount">Pay-in-full discount</span><span class="value" data-sum-save>$0</span></div>
                   <div class="summary-row"><span class="label" data-i18n="summary_dueNow">Due today</span><span class="value" data-sum-due>$0</span></div>
                   <div class="summary-row" data-remaining-row style="display:none;"><span class="label" data-i18n="summary_remaining">Remaining balance</span><span class="value" data-sum-remaining>$0</span></div>
@@ -1242,11 +1329,16 @@
         snack: { title: '🍭 Manna Snack Bar — “La Clásica”', add: 0 }
       };
       const FULL_FLAT_OFF = 20;
+      const XMAS_DISCOUNT = 150;
 
       const translations = {
         en: {
           widgetTitle: 'Manna Snack Bars • Booking',
           widgetSubtitle: 'Plan your snack fiesta, lock the date, and pay securely in minutes.',
+          xmas_badge: 'Christmas Special',
+          xmas_title: 'Save $150 on your Manna Snack Bar',
+          xmas_subtitle: 'Limited-time holiday offer applied automatically to your final total.',
+          xmas_cta: 'Start your Christmas booking',
           actionBack: 'Back',
           actionNext: 'Next',
           actionReview: 'Review',
@@ -1361,6 +1453,8 @@
           summary_location: 'Location',
           summary_contact: 'Contact',
           summary_payMode: 'Mode',
+          summary_regular: 'Regular price',
+          summary_total_special: 'Christmas Special',
           summary_total: 'Total',
           summary_discount: '💝 Pay-in-full discount',
           summary_dueNow: 'Due today',
@@ -1373,6 +1467,10 @@
         es: {
           widgetTitle: 'Manna Snack Bars • Reservación',
           widgetSubtitle: 'Diseña tu barra, agenda y paga en minutos con un toque dulce.',
+          xmas_badge: 'Especial de Navidad',
+          xmas_title: 'Ahorra $150 en tu Manna Snack Bar',
+          xmas_subtitle: 'Oferta navideña por tiempo limitado aplicada automáticamente a tu total final.',
+          xmas_cta: 'Empezar reservación navideña',
           actionBack: 'Atrás',
           actionNext: 'Siguiente',
           actionReview: 'Revisar',
@@ -1487,6 +1585,8 @@
           summary_location: 'Ubicación',
           summary_contact: 'Contacto',
           summary_payMode: 'Modo',
+          summary_regular: 'Precio regular',
+          summary_total_special: 'Precio especial de Navidad',
           summary_total: 'Total',
           summary_discount: '💝 Descuento por pago total',
           summary_dueNow: 'Pagar hoy',
@@ -1613,6 +1713,15 @@
           applyTranslations();
         });
       });
+
+      const xmasCTA = $('[data-xmas-cta]');
+      if (xmasCTA) {
+        xmasCTA.addEventListener('click', () => {
+          go(0);
+          const wrap = document.querySelector('#manna-booking-steps .wrap');
+          if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
 
       const barInputs = $$('[data-choices="bar"] input[name="bar"]');
       const barLabels = $$('[data-choices="bar"] label.choice');
@@ -1903,14 +2012,15 @@
         const s2 = secondPrice();
         const fnt = fountainPrice();
         const beforeDiscount = base + s2 + fnt;
-        let total = roundToNearest5(beforeDiscount);
+        let specialTotal = roundToNearest5(beforeDiscount);
         let savings = 0;
         if (state.pay === 'full') {
           savings = FULL_FLAT_OFF;
-          total = roundToNearest5(Math.max(total - FULL_FLAT_OFF, 0));
+          specialTotal = roundToNearest5(Math.max(specialTotal - FULL_FLAT_OFF, 0));
         }
-        const dueNow = state.pay === 'full' ? total : Math.round(total * 0.25);
-        return { base, s2, fnt, total, dueNow, savings, beforeDiscount };
+        const dueNow = state.pay === 'full' ? specialTotal : Math.round(specialTotal * 0.25);
+        const regularTotal = roundToNearest5(specialTotal + XMAS_DISCOUNT);
+        return { base, s2, fnt, total: specialTotal, regularTotal, dueNow, savings, beforeDiscount };
       }
 
       function updateRunningTotal(){
@@ -2017,11 +2127,12 @@
 
       function renderSummary(){
         const barTitle = state.mainBar ? (t(`bar_${state.mainBar}_title`) || BAR_META[state.mainBar]?.title || '—') : '—';
-        const { total, dueNow, savings, base: mainTotal, s2: secondTotal, fnt: fountainTotal } = compute();
+        const { total, regularTotal, dueNow, savings, base: mainTotal, s2: secondTotal, fnt: fountainTotal } = compute();
         const locale = localeMap[state.lang] || 'en-US';
         const guestLabel = state.lang === 'es' ? 'invitados' : 'guests';
         $('[data-sum-main]').textContent = state.mainBar ? `${barTitle} • ${fmt(mainTotal)}` : '—';
         $('[data-sum-pkg]').textContent = state.guests ? `${state.guests} ${guestLabel} • ${hoursLabel(state.hours)}` : '—';
+        $('[data-sum-regular]').textContent = fmt(regularTotal);
         $('[data-sum-total]').textContent = fmt(total);
         $('[data-sum-due]').textContent = fmt(dueNow);
         $('[data-sum-paymode]').textContent = state.pay === 'full' ? t('pay_full') : t('pay_deposit');
@@ -2083,6 +2194,7 @@
         const secondPkgCode = classifyPkgFromGuests(secondGuests);
         return {
           total: totals.total,
+          regularTotal: totals.regularTotal,
           dueNow: totals.dueNow,
           guests,
           hours,
