@@ -300,6 +300,23 @@
       font-weight:800;
       font-size:14px;
       box-shadow:0 10px 26px rgba(15,23,42,.15);
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:2px;
+    }
+
+    .step-hero .running-regular {
+      font-size:12px;
+      font-weight:700;
+      color:#dc2626;
+      text-decoration:line-through;
+      opacity:0.9;
+    }
+
+    .step-hero .running-promo {
+      font-size:14px;
+      font-weight:800;
     }
 
     .card h2 { margin:0 0 6px; }
@@ -1288,11 +1305,15 @@
                 <h3 data-i18n="summary_payment">Payment</h3>
                 <div class="summary-row"><span class="label" data-i18n="summary_payMode">Mode</span><span class="value" data-sum-paymode>—</span></div>
                 <div class="totals">
-                  <div class="summary-row" data-regular-row>
-                    <span class="label" data-i18n="summary_regular">Regular price</span>
+                  <div class="summary-row">
+                    <span class="label" data-i18n="summary_regular">Regular total</span>
                     <span class="value price-regular" data-sum-regular>$0</span>
                   </div>
-                  <div class="summary-row"><span class="label" data-i18n="summary_total_special">Christmas Special</span><span class="value total-main" data-sum-total>$0</span></div>
+                  <div class="summary-row">
+                    <span class="label" data-i18n="summary_christmas_discount">🎄 Christmas Special discount</span>
+                    <span class="value" data-sum-christmas-discount>-$150.00</span>
+                  </div>
+                  <div class="summary-row"><span class="label" data-i18n="summary_total">Total</span><span class="value total-main" data-sum-total>$0</span></div>
                   <div class="summary-row" data-full-save-row style="display:none;"><span class="label" data-i18n="summary_discount">Pay-in-full discount</span><span class="value" data-sum-save>$0</span></div>
                   <div class="summary-row"><span class="label" data-i18n="summary_dueNow">Due today</span><span class="value" data-sum-due>$0</span></div>
                   <div class="summary-row" data-remaining-row style="display:none;"><span class="label" data-i18n="summary_remaining">Remaining balance</span><span class="value" data-sum-remaining>$0</span></div>
@@ -1329,7 +1350,7 @@
         snack: { title: '🍭 Manna Snack Bar — “La Clásica”', add: 0 }
       };
       const FULL_FLAT_OFF = 20;
-      const XMAS_DISCOUNT = 150;
+      const CHRISTMAS_DISCOUNT = 150;
 
       const translations = {
         en: {
@@ -1346,6 +1367,8 @@
           actionPayNow: 'Confirm & pay 💳',
           errorIncomplete: 'Please complete all required fields.',
           runningTotal: 'Total {total} (Tax included)',
+          runningRegular: 'Regular price: {total}',
+          runningPromo: 'Christmas Special: {total} (Tax included)',
           perGuest: 'Price per guest: {price}',
           guestCount: 'Guests: {count} people',
           step1Eyebrow: 'Step 1',
@@ -1453,9 +1476,10 @@
           summary_location: 'Location',
           summary_contact: 'Contact',
           summary_payMode: 'Mode',
-          summary_regular: 'Regular price',
+          summary_regular: 'Regular total',
           summary_total_special: 'Christmas Special',
           summary_total: 'Total',
+          summary_christmas_discount: '🎄 Christmas Special discount',
           summary_discount: '💝 Pay-in-full discount',
           summary_dueNow: 'Due today',
           summary_remaining: 'Remaining balance',
@@ -1478,6 +1502,8 @@
           actionPayNow: 'Confirmar y pagar 💳',
           errorIncomplete: 'Completa todos los campos obligatorios.',
           runningTotal: 'Total {total} (Impuestos incluidos)',
+          runningRegular: 'Precio regular: {total}',
+          runningPromo: 'Especial de Navidad: {total} (Impuestos incluidos)',
           perGuest: 'Precio por invitado: {price}',
           guestCount: 'Invitados: {count} personas',
           step1Eyebrow: 'Paso 1',
@@ -1585,9 +1611,10 @@
           summary_location: 'Ubicación',
           summary_contact: 'Contacto',
           summary_payMode: 'Modo',
-          summary_regular: 'Precio regular',
+          summary_regular: 'Total regular',
           summary_total_special: 'Precio especial de Navidad',
           summary_total: 'Total',
+          summary_christmas_discount: '🎄 Descuento Especial de Navidad',
           summary_discount: '💝 Descuento por pago total',
           summary_dueNow: 'Pagar hoy',
           summary_remaining: 'Saldo pendiente',
@@ -2019,13 +2046,22 @@
           specialTotal = roundToNearest5(Math.max(specialTotal - FULL_FLAT_OFF, 0));
         }
         const dueNow = state.pay === 'full' ? specialTotal : Math.round(specialTotal * 0.25);
-        const regularTotal = roundToNearest5(specialTotal + XMAS_DISCOUNT);
+        const regularTotal = specialTotal + CHRISTMAS_DISCOUNT;
         return { base, s2, fnt, total: specialTotal, regularTotal, dueNow, savings, beforeDiscount };
       }
 
       function updateRunningTotal(){
         const { total } = compute();
-        $$('.running[data-running]').forEach(el => el.textContent = t('runningTotal', { total: fmt(total) }));
+        const regularDisplayTotal = total + CHRISTMAS_DISCOUNT;
+        $$('.running[data-running]').forEach(el => {
+          const regularText = t('runningRegular', { total: fmt(regularDisplayTotal) });
+          const promoText = t('runningPromo', { total: fmt(total) });
+
+          el.innerHTML = `
+            <div class="running-regular">${regularText}</div>
+            <div class="running-promo">${promoText}</div>
+          `;
+        });
         updatePerGuestLine();
         updateFinancingNotes(total);
         if (state.step === TOTAL_STEPS-1) renderSummary();
@@ -2127,12 +2163,15 @@
 
       function renderSummary(){
         const barTitle = state.mainBar ? (t(`bar_${state.mainBar}_title`) || BAR_META[state.mainBar]?.title || '—') : '—';
-        const { total, regularTotal, dueNow, savings, base: mainTotal, s2: secondTotal, fnt: fountainTotal } = compute();
+        const { total, dueNow, savings, base: mainTotal, s2: secondTotal, fnt: fountainTotal } = compute();
+        const regularDisplayTotal = total + CHRISTMAS_DISCOUNT;
+        const christmasDiscountDisplay = fmt(CHRISTMAS_DISCOUNT * -1);
         const locale = localeMap[state.lang] || 'en-US';
         const guestLabel = state.lang === 'es' ? 'invitados' : 'guests';
         $('[data-sum-main]').textContent = state.mainBar ? `${barTitle} • ${fmt(mainTotal)}` : '—';
         $('[data-sum-pkg]').textContent = state.guests ? `${state.guests} ${guestLabel} • ${hoursLabel(state.hours)}` : '—';
-        $('[data-sum-regular]').textContent = fmt(regularTotal);
+        $('[data-sum-regular]').textContent = fmt(regularDisplayTotal);
+        $('[data-sum-christmas-discount]').textContent = christmasDiscountDisplay;
         $('[data-sum-total]').textContent = fmt(total);
         $('[data-sum-due]').textContent = fmt(dueNow);
         $('[data-sum-paymode]').textContent = state.pay === 'full' ? t('pay_full') : t('pay_deposit');
@@ -2192,9 +2231,12 @@
         const pkgCode = classifyPkgFromGuests(guests);
         const secondGuests = clampGuests(state.secondGuests || guests || 0);
         const secondPkgCode = classifyPkgFromGuests(secondGuests);
+        const regularDisplayTotal = totals.total + CHRISTMAS_DISCOUNT;
         return {
           total: totals.total,
           regularTotal: totals.regularTotal,
+          regularDisplayTotal,
+          christmasDiscount: CHRISTMAS_DISCOUNT,
           dueNow: totals.dueNow,
           guests,
           hours,
