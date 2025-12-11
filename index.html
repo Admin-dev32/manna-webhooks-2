@@ -475,6 +475,20 @@
     .add-on-row .copy { font-size:14px; color:var(--muted); }
     .add-on-row .price { font-weight:700; color:var(--accent-strong); }
 
+    .second-running-regular {
+      font-size: 12px;
+      font-weight: 700;
+      color: #dc2626; /* red */
+      text-decoration: line-through;
+      opacity: 0.9;
+    }
+
+    .second-running-promo {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
     .toggle { display:flex; align-items:center; gap:12px; margin:14px 0; }
 
     .switch {
@@ -1084,8 +1098,8 @@
               <div class="add-on-row">
                 <header>
                   <div>
-                    <div class="title" data-i18n="addon_second_title">Add a second standard bar</div>
-                    <div class="copy" data-i18n="addon_second_desc">Discounted pricing by guest count.</div>
+                    <div class="title" data-i18n="addon_second_title">🧑‍🤝‍🧑 Add a second standard bar</div>
+                    <div class="copy" data-i18n="addon_second_desc">Serve two bars at once with special pricing.</div>
                   </div>
                   <div class="price" data-second-price>Second bar total: $0</div>
                 </header>
@@ -1350,6 +1364,9 @@
         snack: { title: '🍭 Manna Snack Bar — “La Clásica”', add: 0 }
       };
       const FULL_FLAT_OFF = 20;
+      const CHRISTMAS_DISCOUNT_SECOND = 150;
+      // Christmas Special: display a fake regular price that is always this much higher
+      // than the promo total; the actual Stripe charge remains the discounted total.
       const CHRISTMAS_DISCOUNT = 150;
 
       const translations = {
@@ -1951,15 +1968,35 @@
         return { total, perGuest: total / g };
       }
 
+      const SECOND_BAR_POINTS = [
+        { guests: 30,  total: 350 },
+        { guests: 110, total: 385 },
+        { guests: 150, total: 485 },
+        { guests: 250, total: 590 }
+      ];
+
       function secondBarDiscounted(guests, barType = 'standard') {
         const g = clampGuests(guests);
-        const base = calculateMainBar(g, barType === 'tostiloco' ? 'tostiloco' : 'standard').total;
-        const pct = g <= 150 ? 0.15 : 0.18;
 
-        let discount = base * pct;
-        discount = Math.max(30, Math.min(150, discount));
+        if (g <= SECOND_BAR_POINTS[0].guests) {
+          return SECOND_BAR_POINTS[0].total;
+        }
 
-        return round5(Math.max(0, base - discount));
+        for (let i = 0; i < SECOND_BAR_POINTS.length - 1; i++) {
+          const a = SECOND_BAR_POINTS[i];
+          const b = SECOND_BAR_POINTS[i + 1];
+
+          if (g === a.guests) return a.total;
+          if (g === b.guests) return b.total;
+
+          if (g > a.guests && g < b.guests) {
+            const t = (g - a.guests) / (b.guests - a.guests);
+            const interpolated = a.total + t * (b.total - a.total);
+            return round5(interpolated);
+          }
+        }
+
+        return SECOND_BAR_POINTS[SECOND_BAR_POINTS.length - 1].total;
       }
 
       function mainBarCalc(){
@@ -2022,7 +2059,17 @@
           const countLine = state.lang === 'es' ? `Invitados: ${g} personas` : `Guests: ${g} people`;
 
           if (secondGuestCountLabel) secondGuestCountLabel.textContent = countLine;
-          elSecondPrice.textContent = `${fmt(val)} • ${g} ${guestLabel} • ${hoursText}`;
+          const regularDisplay = val + CHRISTMAS_DISCOUNT_SECOND;
+
+          const regularText = t('runningRegular', { total: fmt(regularDisplay) });
+          const promoText = t('runningPromo', { total: fmt(val) });
+
+          elSecondPrice.innerHTML = `
+            <div class="second-running-regular">${regularText}</div>
+            <div class="second-running-promo">
+              ${promoText} • ${g} ${guestLabel} • ${hoursText}
+            </div>
+          `;
         }else{
           elSecondPrice.textContent = t('summary_second_none');
         }
